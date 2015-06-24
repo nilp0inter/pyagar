@@ -7,8 +7,6 @@ import requests
 
 
 INIT_TOKEN = '154669603'
-LOOP = asyncio.get_event_loop()
-NICK = "WATCHMEN"
 USER_AGENT = (
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/43.0.2357.125 Safari/537.36')
@@ -44,7 +42,8 @@ import websockets
 
 
 class Client:
-    def __init__(self, location='EU-London'):
+    def __init__(self, nick, location='EU-London'):
+        self.nick = nick
         self.location = location
         self.server = None
         self.token = None
@@ -83,9 +82,10 @@ class Client:
         self.connected.set()
 
     @asyncio.coroutine
-    def spawn(self, nick):
+    def spawn(self):
         yield from self.connected.wait()
-        msg = struct.pack("B" + ("H" * len(nick)), 0, *nick.encode('utf-8'))
+        msg = struct.pack("B" + ("H" * len(self.nick)),
+                          0, *self.nick.encode('utf-8'))
         yield from self.ws.send(msg)
 
     @asyncio.coroutine
@@ -114,36 +114,3 @@ class Client:
         yield from self.connected.wait()
         yield from asyncio.sleep(2)
         yield from self.ws.send(struct.pack("B", 1))
-
-
-@asyncio.coroutine
-def output(client):
-    while True:
-        data = yield from client.messages.get()
-        print(data)
-
-
-@asyncio.coroutine
-def randommove(cli):
-    yield from cli.spawn(NICK)
-    while True:
-        yield from asyncio.sleep(0.04)
-        yield from cli.move(10, 10)
-    
-if __name__ == '__main__':
-    cli = Client()
-    # cli.server = sys.argv[1]
-    # cli.token = sys.argv[2]
-    
-    LOOP.run_until_complete(cli.connect())
-    
-    
-    actors = asyncio.wait([
-        cli.read(),
-        # randommove(cli),
-        cli.spawn('test'),
-        cli.spectate(),
-        output(cli)
-    ])
-    
-    LOOP.run_until_complete(actors)

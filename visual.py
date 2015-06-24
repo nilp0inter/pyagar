@@ -1,15 +1,14 @@
 import asyncio
-import traceback
+import ctypes
 import sys
 import time
-import ctypes
+import traceback
 
-import sdl2
-from sdl2 import video
 from sdl2 import mouse
+from sdl2 import video
+import sdl2
 import sdl2.ext
 
-from client import Client, LOOP, NICK
 from messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
 
 FRAME_RATE = 60
@@ -44,6 +43,7 @@ class Visualizer:
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
     def __init__(self, client, view_only=False):
+        self.messages = asyncio.Queue()
         self.client = client
         self.view_only = view_only
         self.cells = dict()
@@ -137,14 +137,14 @@ class Visualizer:
 
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
-            data = yield from self.client.messages.get()
+            data = yield from self.messages.get()
             if isinstance(data, ScreenAndCamera):
                 self.set_window(data)
                 break
 
         # Play
         while True:
-            data = yield from self.client.messages.get()
+            data = yield from self.messages.get()
 
             if isinstance(data, PlayerCell):
                 self.player_id = data.cell.id
@@ -164,7 +164,7 @@ class Visualizer:
 
             self.now = time.monotonic()
             delay = abs(self.last - self.now)
-            if self.client.messages.empty() and delay > 1 / FRAME_RATE:
+            if self.messages.empty() and delay > 1 / FRAME_RATE:
 
                 # Read sdl events
                 for event in sdl2.ext.get_events():
@@ -177,7 +177,7 @@ class Visualizer:
                     buttons = mouse.SDL_GetMouseState(self.mouse_x,
                                                       self.mouse_y)
                     if buttons == 1:
-                        yield from self.client.spawn(NICK)
+                        yield from self.client.spawn()
 
                     X = self.mouse_x.value * 10
                     Y = self.mouse_y.value * 10
@@ -185,15 +185,3 @@ class Visualizer:
                     yield from self.client.move(X, Y)
 
                 self.last = self.now
-
-
-if __name__ == "__main__":
-    cli = Client()
-    actors = asyncio.wait([
-        cli.connect(),
-        cli.read(),
-        #    cli.spectate(),
-        Visualizer(cli).run()
-    ])
-    
-    LOOP.run_until_complete(actors)
