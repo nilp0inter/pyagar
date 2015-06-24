@@ -1,0 +1,3 @@
+PySDL2==0.9.3
+requests==2.7.0
+websockets==2.4
