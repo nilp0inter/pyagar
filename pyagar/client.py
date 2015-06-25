@@ -37,7 +37,7 @@ client.build_request = build_request
 #
 # </monkeypatch>
 #
-import messages
+from pyagar import messages
 import websockets
 
 

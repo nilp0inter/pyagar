@@ -9,7 +9,7 @@ from sdl2 import video
 import sdl2
 import sdl2.ext
 
-from messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
+from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
 
 FRAME_RATE = 60
 

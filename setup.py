@@ -14,7 +14,6 @@ setup(name='pyagar',
       classifiers=[
           'Programming Language :: Python :: 3.4',
           'Development Status :: 4 - Beta',
-          'Topic :: Database',
           'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)'
       ],
       keywords='agar.io client',
@@ -26,4 +25,8 @@ setup(name='pyagar',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-      ])
+      ],
+      entry_points={
+          'console_scripts':
+              ['agar.io=pyagar:main']
+      })

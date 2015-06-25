@@ -1,6 +1,6 @@
 import asyncio
 from collections import namedtuple
-from messages import Status, PlayerCell, ScreenAndCamera
+from pyagar.messages import Status, PlayerCell, ScreenAndCamera
 
 Movement = namedtuple('Movement', ['x', 'y'])
 
