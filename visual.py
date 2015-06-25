@@ -48,7 +48,6 @@ class Visualizer:
         self.view_only = view_only
         self.cells = dict()
         self.players = dict()
-        self.running = True
         self.last = None
         self.player_id = None
 
