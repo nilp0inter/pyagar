@@ -25,6 +25,9 @@ setup(name='pyagar',
       include_package_data=True,
       zip_safe=False,
       install_requires=[
+          'PySDL2==0.9.3',
+          'requests==2.7.0',
+          'websockets==2.4'
       ],
       entry_points={
           'console_scripts':
