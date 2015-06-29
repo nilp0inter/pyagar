@@ -1,3 +1,4 @@
+from collections import namedtuple
 import asyncio
 import ctypes
 import sys
@@ -10,32 +11,12 @@ import sdl2
 import sdl2.ext
 
 from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
+from pyagar.messages import Cell, Camera
 
 FRAME_RATE = 60
 
 BLACK = sdl2.ext.Color(0, 0, 0)
 WHITE = sdl2.ext.Color(255, 255, 255)
-
-
-class SoftwareRenderer(sdl2.ext.SoftwareSpriteRenderSystem):
-    def __init__(self, window):
-        super().__init__(window)
-
-    def render(self, components):
-        sdl2.ext.fill(self.surface, WHITE)
-        super().render(components)
-
-
-class Cell(sdl2.ext.Entity):
-    def __init__(self, world, sprite, posx=0, posy=0):
-        self.sprite = sprite
-        self.sprite.position = posx, posy
-
-
-class Camera(sdl2.ext.Entity):
-    def __init__(self, world, sprite, posx=0, posy=0):
-        self.sprite = sprite
-        self.sprite.position = posx, posy
 
 
 class Visualizer:
@@ -46,24 +27,88 @@ class Visualizer:
         self.messages = asyncio.Queue()
         self.client = client
         self.view_only = view_only
-        self.cells = dict()
         self.players = dict()
         self.last = None
         self.player_id = None
 
         self.window = None
-        self.world = None
+        self.winsurface = None
 
         self.mouse_x = ctypes.c_int()
         self.mouse_y = ctypes.c_int()
 
-        self.screen_width = self.screen_height = 1024
+        self.s_width = 1024
+        self.s_height = 1024
 
-        self.camera_x = 0
-        self.camera_y = 0
-        self.camera_zoom = 1
-        self.camera = None
-        self.camera_sp = None
+        self.width = None
+        self.height = None
+
+        self.stage = None
+
+        self._screen = None
+        self._camera = None
+
+    def to_coords(self, x, y):
+        if self.screen is None:
+            raise ValueError("Screen not setted.")
+        else:
+            x_offset = 0 - self.screen.x1
+            y_offset = 0 - self.screen.y1
+
+            return int(x + x_offset), int(y + y_offset)
+
+    def mouse_to_stage_coords(self, x, y):
+        cell = self.players.get(self.player_id)
+        if cell is None:
+            return None
+        else:
+            m_x = cell.x + (x - self.s_width / 2)
+            m_y = cell.y + (y - self.s_height / 2)
+            
+            return m_x, m_y
+
+    @property
+    def screen(self):
+        return self._screen
+
+    @screen.setter
+    def screen(self, value):
+        self._screen = value
+        self.width = int(value.x2 - value.x1)
+        self.height = int(value.y2 - value.y1)
+        self.stage = sdl2.surface.SDL_CreateRGBSurface(
+            0,
+            self.width,
+            self.height,
+            32, 0, 0, 0, 0)
+
+    @property
+    def camera(self):
+        return self._camera
+
+    @camera.setter
+    def camera(self, value):
+        self._camera = value
+
+    @property
+    def camera_rect(self):
+        x, y = self.to_coords(self.camera.x, self.camera.y)
+        w = int(self.width * self.camera.zoom)
+        h = int(self.height * self.camera.zoom)
+
+        x = int(x - w / 2)
+        y = int(y - h / 2)
+
+        if x + w > self.width:
+            x = self.width - w
+        if y + h > self.height:
+            y = self.height - h
+        if x < 0:
+            x = 0
+        if y < 0:
+            y = 0
+
+        return sdl2.SDL_Rect(x, y, w, h)
 
     @staticmethod
     def hex2color(h):
@@ -72,73 +117,56 @@ class Visualizer:
                               (i & 0x00ff00) >> 8,
                               (i & 0x0000ff))
 
-    def delete_cell(self, cell_id):
-        del self.cells[cell_id]
-        player = self.players.pop(cell_id)
-        player.delete()
+    def refresh(self):
+        # Set background
+        res = sdl2.surface.SDL_FillRect(
+            self.stage.contents,
+            self.camera_rect,
+            sdl2.ext.prepare_color(BLACK, self.stage.contents))
 
-    def update_cell(self, cell):
-        if cell.id in self.cells:  # Existing cell
-            sprite = self.cells[cell.id]
-            if sprite.size[0] != cell.size:  # Is Modified
-                self.delete_cell(cell.id)
+        # Draw the cells
+        for cell in self.players.values():
+            if cell.id == self.player_id:
+                color = WHITE
+                self.camera = Camera(cell.x, cell.y, 0.125)
             else:
-                return
+                color = self.hex2color(cell.color)
+            color = sdl2.ext.prepare_color(color, self.stage.contents)
+            x, y = self.to_coords(cell.x, cell.y)
+            w = h = int(cell.size * 1.5)
+            x = int(x - w / 2)
+            y = int(y - h / 2)
+            sdl2.surface.SDL_FillRect(self.stage.contents,
+                                      sdl2.SDL_Rect(x, y, w, h),
+                                      color)
+        
+        # Copy to the screen
+        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
+        res = sdl2.surface.SDL_BlitScaled(self.stage.contents,
+                                          self.camera_rect,
+                                          self.winsurface,
+                                          sc_rect)
 
-        if cell.id == self.player_id:
-            color = WHITE
-        else:
-            color = self.hex2color(cell.color)
-
-        width = height = int(cell.size / 10)
-        x = int(cell.x / 10 - width / 2)
-        y = int(cell.y / 10 - height / 2)
-
-        sprite = self.factory.from_color(color, size=(width, height))
-        sprite.depth = -cell.size
-        self.cells[cell.id] = sprite
-        self.players[cell.id] = Cell(self.world, sprite, x, y)
-
-    def update_camera(self, camera):
-        if self.camera is not None:
-            self.camera.delete()
-        width = int(self.screen_width * camera.zoom)
-        height = int(self.screen_height * camera.zoom)
-
-        self.camera_x = int(camera.x / 10 - width / 2)
-        self.camera_y = int(camera.y / 10 - height / 2)
-        self.camera_zoom = camera.zoom
-
-        self.camera_sp = self.factory.from_color(
-            BLACK, size = (width, height))
-        self.camera_sp.depth = -65535
-        self.camera = Camera(self.world, self.camera_sp,
-                             self.camera_x, self.camera_y)
-
-    def set_window(self, data):
-        self.screen_width = int((data.screen.x2 - data.screen.x1) / 10)
-        self.screen_height = int((data.screen.y2 - data.screen.y1) / 10)
-        self.window = sdl2.ext.Window(
-            "agar.io",
-            size=(self.screen_width, self.screen_height))
-        self.window.show()
-        self.world = sdl2.ext.World()
-
-        spriterenderer = SoftwareRenderer(self.window)
-        self.world.add_system(spriterenderer)
-
-        self.update_camera(data.camera)
+        # Refresh the window
+        self.window.refresh()
+                                     
 
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
         self.last = time.monotonic()
 
+        self.window = sdl2.ext.Window("agar.io", size=(self.s_width,
+                                                       self.s_height))
+        self.window.show()
+        self.winsurface = self.window.get_surface()
+
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
             data = yield from self.messages.get()
             if isinstance(data, ScreenAndCamera):
-                self.set_window(data)
+                self.screen = data.screen
+                self.camera = data.camera
                 break
 
         # Play
@@ -148,29 +176,28 @@ class Visualizer:
             if isinstance(data, PlayerCell):
                 self.player_id = data.cell.id
             elif isinstance(data, CameraPosition):
-                self.update_camera(data.camera)
+                self.camera = data.camera
             elif isinstance(data, Status):
                 for cell in data.cells:
-                    self.update_cell(cell)
+                    self.players[cell.id] = cell
                 for cell in data.dissapears:
-                    if cell.id in self.cells:
-                        self.delete_cell(cell.id)
+                    if cell.id in self.players:
+                        del self.players[cell.id]
                 for eats in data.eat:
                     if eats.eatee == self.player_id:
                         self.player_id = None
-                    if eats.eatee in self.cells:
-                        self.delete_cell(eats.eatee)
+                    if eats.eatee in self.players:
+                        del self.players[eats.eatee]
 
             self.now = time.monotonic()
             delay = abs(self.last - self.now)
-            if self.messages.empty() and delay > 1 / FRAME_RATE:
-
+            if delay > 1 / FRAME_RATE:
                 # Read sdl events
                 for event in sdl2.ext.get_events():
                     if event.type == sdl2.SDL_QUIT:
                         sys.exit(0)
 
-                self.world.process()
+                self.refresh()
 
                 if not self.view_only:
                     buttons = mouse.SDL_GetMouseState(self.mouse_x,
@@ -178,9 +205,10 @@ class Visualizer:
                     if buttons == 1:
                         yield from self.client.spawn()
 
-                    X = self.mouse_x.value * 10
-                    Y = self.mouse_y.value * 10
-
-                    yield from self.client.move(X, Y)
+                    move = self.mouse_to_stage_coords(self.mouse_x.value,
+                                                      self.mouse_y.value)
+                    if move is not None:
+                        x, y = move
+                        yield from self.client.move(x, y)
 
                 self.last = self.now
