@@ -69,7 +69,7 @@ Controls
 ~~~~~~~~
 
 **Movement**: Mouse
-**Split**: Mouse (Left button)
+**Split**/**Start game**: Mouse (Left button)
 **Eject mass**: Not implemented yet
 
 Play examples
