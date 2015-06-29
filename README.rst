@@ -1,6 +1,11 @@
 pyagar
 ======
 
+.. image:: docs/images/shot.png
+   :alt: Screenshot
+   :align: center
+
+
 Installation
 ------------
 
