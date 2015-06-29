@@ -44,8 +44,13 @@ Develop version
    $ python setup.py develop
 
 
-Play
-----
+Usage
+-----
+
+Command
+~~~~~~~
+
+This package creates the command ``agar.io``.
 
 .. code-block:: bash
 
@@ -60,6 +65,15 @@ Play
       --debug
       --spectate
 
+Controls
+~~~~~~~~
+
+**Movement**: Mouse
+**Split**: Mouse (Left button)
+**Eject mass**: Not implemented yet
+
+Play examples
+-------------
 
 Play setting a custom nick
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
