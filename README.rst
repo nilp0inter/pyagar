@@ -23,7 +23,7 @@ In order to run this software you'll need:
 Installation
 ------------
 
-It is recomended install this package into a virtualenv.
+It is recomended to install this package into a virtualenv.
 
 
 Stable version
@@ -88,7 +88,7 @@ Play automatically using the default bot
 Play using the bot, but without a window
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Please, do not abuse the system with this!
+Please, **do not abuse** the system with this!
 
 .. code-block:: bash
 
