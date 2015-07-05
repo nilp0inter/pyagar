@@ -72,7 +72,8 @@ def main():
     LOOP.run_until_complete(client.connect())
 
     print("Starting!")
-    LOOP.run_until_complete(asyncio.wait(coros))
+    LOOP.run_until_complete(asyncio.wait(coros,
+                                         return_when=asyncio.FIRST_EXCEPTION))
 
 
 if __name__ == '__main__':
