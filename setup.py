@@ -5,7 +5,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 
 setup(name='pyagar',
       version=VERSION,

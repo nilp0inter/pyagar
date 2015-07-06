@@ -1,3 +1,7 @@
+"""
+The documentation is important!
+
+"""
 import asyncio
 from collections import namedtuple
 from pyagar.messages import Status, PlayerCell, ScreenAndCamera
