@@ -36,14 +36,16 @@ class Visualizer:
         self.client = client
         self.view_only = view_only
         self.players = dict()
-        self.last = None
         self.player_id = None
 
         self.window = None
         self.winsurface = None
 
-        self.mouse_x = ctypes.c_int()
-        self.mouse_y = ctypes.c_int()
+        self.mouse_x = self.mouse_y = None
+        self.move = None
+        self.last_move = None
+
+        self.last = self.last_move_send = time.monotonic()
 
         self.s_width = 1024
         self.s_height = 1024
@@ -259,7 +261,11 @@ class Visualizer:
 
         # Play
         while True:
-            data = yield from self.messages.get()
+            try:
+                data = yield from asyncio.wait_for(self.messages.get(),
+                                                   1 / FRAME_RATE)
+            except asyncio.TimeoutError:
+                data = None
 
             if isinstance(data, PlayerCell):
                 self.player_id = data.cell.id
@@ -290,16 +296,29 @@ class Visualizer:
                         elif event.key.keysym.sym == sdl2.SDLK_w:
                             asyncio.async(self.client.eject())
                     elif event.type == sdl2.SDL_MOUSEMOTION:
-                        move = self.mouse_to_stage_coords(event.motion.x,
-                                                          event.motion.y)
-                        if move:
-                            x, y = move
-                            asyncio.async(self.client.move(x, y))
+                        self.mouse_x = event.motion.x
+                        self.mouse_y = event.motion.y
+                        self.move = self.mouse_to_stage_coords(self.mouse_x,
+                                                               self.mouse_y)
                     elif (event.type == sdl2.SDL_MOUSEBUTTONDOWN and
                           event.button.button == sdl2.SDL_BUTTON_LEFT):
                         asyncio.async(self.client.spawn())
                         
             self.now = time.monotonic()
+
+            if self.move is not None:
+                if self.move != self.last_move:
+                    asyncio.async(self.client.move(*self.move))
+                    self.last_move = self.move
+                    self.last_move_send = self.now
+                elif self.now - self.last_move_send > 0.2:
+                    self.move = self.mouse_to_stage_coords(self.mouse_x,
+                                                           self.mouse_y)
+                    if self.move:
+                        asyncio.async(self.client.move(*self.move))
+                        self.last_move = self.move
+                        self.last_move_send = self.now
+
             delay = abs(self.last - self.now)
             if delay > 1 / FRAME_RATE:
                 self.refresh()
