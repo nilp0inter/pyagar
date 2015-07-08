@@ -274,31 +274,27 @@ class Visualizer:
                     if eats.eatee in self.players:
                         del self.players[eats.eatee]
 
-            self.now = time.monotonic()
-            delay = abs(self.last - self.now)
-            if delay > 1 / FRAME_RATE:
-                # Read sdl events
-                for event in sdl2.ext.get_events():
-                    if event.type == sdl2.SDL_QUIT:
-                        sys.exit(0)
-                    elif event.type == sdl2.SDL_KEYDOWN:
+            # Read sdl events
+            for event in sdl2.ext.get_events():
+                if event.type == sdl2.SDL_QUIT:
+                    sys.exit(0)
+                if not self.view_only:
+                    if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
                             yield from self.client.split()
                         elif event.key.keysym.sym == sdl2.SDLK_w:
                             yield from self.client.eject()
-
-                self.refresh()
-
-                if not self.view_only:
-                    buttons = mouse.SDL_GetMouseState(self.mouse_x,
-                                                      self.mouse_y)
-                    if buttons == 1:
+                    elif event.type == sdl2.SDL_MOUSEMOTION:
+                        move = self.mouse_to_stage_coords(event.motion.x,
+                                                          event.motion.y)
+                        if move:
+                            yield from self.client.move(*move)
+                    elif (event.type == sdl2.SDL_MOUSEBUTTONDOWN and
+                          event.button.button == sdl2.SDL_BUTTON_LEFT):
                         yield from self.client.spawn()
-
-                    move = self.mouse_to_stage_coords(self.mouse_x.value,
-                                                      self.mouse_y.value)
-                    if move is not None:
-                        x, y = move
-                        yield from self.client.move(x, y)
-
+                        
+            self.now = time.monotonic()
+            delay = abs(self.last - self.now)
+            if delay > 1 / FRAME_RATE:
+                self.refresh()
                 self.last = self.now
