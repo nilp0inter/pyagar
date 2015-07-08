@@ -31,5 +31,5 @@ setup(name='pyagar',
       ],
       entry_points={
           'console_scripts':
-              ['agar.io=pyagar:main']
+              ['pyagar=pyagar:main']
       })
