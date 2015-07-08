@@ -158,10 +158,23 @@ class Visualizer:
                               (i & 0x0000ff))
 
     def refresh(self):
-        # Draw the cells
-        for cell in self.players.values():
+        main = self.players.get(self.player_id)
+        if main:
+            self.camera = Camera(main.x, main.y, 0.085)
+
+        camera = self.camera_rect
+
+        # Set background
+        sdl2.surface.SDL_FillRect(
+            self.stage.contents,
+            camera,
+            sdl2.ext.prepare_color(BLACK, self.stage.contents))
+
+        # Draw the cells (Viruses last)
+        cells = sorted(self.players.values(),
+                       key=lambda c: c.is_virus)
+        for cell in cells:
             if cell.id == self.player_id:
-                self.camera = Camera(cell.x, cell.y, 0.085)
                 label = self.client.nick
             else:
                 label = self.names.get(cell.id)
@@ -212,24 +225,16 @@ class Visualizer:
                     sdl2.SDL_Rect(int(x-cell.size*0.75), int(y-cell.size*0.50),
                                   int(cell.size*1.5), int(cell.size)))
 
-        camera = self.camera_rect
+        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
         # Copy to the screen
-        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
         sdl2.surface.SDL_BlitScaled(self.stage.contents,
                                     camera,
                                     self.winsurface,
                                     sc_rect)
 
-        # Set background
-        sdl2.surface.SDL_FillRect(
-            self.stage.contents,
-            self.camera_border_rect,
-            sdl2.ext.prepare_color(BLACK, self.stage.contents))
-
         # Refresh the window
         self.window.refresh()
-                                     
 
     @asyncio.coroutine
     def run(self):
