@@ -36,14 +36,16 @@ class Visualizer:
         self.client = client
         self.view_only = view_only
         self.players = dict()
-        self.last = None
         self.player_id = None
 
         self.window = None
         self.winsurface = None
 
-        self.mouse_x = ctypes.c_int()
-        self.mouse_y = ctypes.c_int()
+        self.mouse_x = self.mouse_y = None
+        self.move = None
+        self.last_move = None
+
+        self.last = self.last_move_send = time.monotonic()
 
         self.s_width = 1024
         self.s_height = 1024
@@ -158,10 +160,23 @@ class Visualizer:
                               (i & 0x0000ff))
 
     def refresh(self):
-        # Draw the cells
-        for cell in self.players.values():
+        main = self.players.get(self.player_id)
+        if main:
+            self.camera = Camera(main.x, main.y, 0.085)
+
+        camera = self.camera_rect
+
+        # Set background
+        sdl2.surface.SDL_FillRect(
+            self.stage.contents,
+            camera,
+            sdl2.ext.prepare_color(BLACK, self.stage.contents))
+
+        # Draw the cells (Viruses last)
+        cells = sorted(self.players.values(),
+                       key=lambda c: c.is_virus)
+        for cell in cells:
             if cell.id == self.player_id:
-                self.camera = Camera(cell.x, cell.y, 0.085)
                 label = self.client.nick
             else:
                 label = self.names.get(cell.id)
@@ -212,24 +227,16 @@ class Visualizer:
                     sdl2.SDL_Rect(int(x-cell.size*0.75), int(y-cell.size*0.50),
                                   int(cell.size*1.5), int(cell.size)))
 
-        camera = self.camera_rect
+        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
         # Copy to the screen
-        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
         sdl2.surface.SDL_BlitScaled(self.stage.contents,
                                     camera,
                                     self.winsurface,
                                     sc_rect)
 
-        # Set background
-        sdl2.surface.SDL_FillRect(
-            self.stage.contents,
-            self.camera_border_rect,
-            sdl2.ext.prepare_color(BLACK, self.stage.contents))
-
         # Refresh the window
         self.window.refresh()
-                                     
 
     @asyncio.coroutine
     def run(self):
@@ -254,7 +261,11 @@ class Visualizer:
 
         # Play
         while True:
-            data = yield from self.messages.get()
+            try:
+                data = yield from asyncio.wait_for(self.messages.get(),
+                                                   1 / FRAME_RATE)
+            except asyncio.TimeoutError:
+                data = None
 
             if isinstance(data, PlayerCell):
                 self.player_id = data.cell.id
@@ -274,31 +285,41 @@ class Visualizer:
                     if eats.eatee in self.players:
                         del self.players[eats.eatee]
 
+            # Read sdl events
+            for event in sdl2.ext.get_events():
+                if event.type == sdl2.SDL_QUIT:
+                    sys.exit(0)
+                if not self.view_only:
+                    if event.type == sdl2.SDL_KEYDOWN:
+                        if event.key.keysym.sym == sdl2.SDLK_SPACE:
+                            asyncio.async(self.client.split())
+                        elif event.key.keysym.sym == sdl2.SDLK_w:
+                            asyncio.async(self.client.eject())
+                    elif event.type == sdl2.SDL_MOUSEMOTION:
+                        self.mouse_x = event.motion.x
+                        self.mouse_y = event.motion.y
+                        self.move = self.mouse_to_stage_coords(self.mouse_x,
+                                                               self.mouse_y)
+                    elif (event.type == sdl2.SDL_MOUSEBUTTONDOWN and
+                          event.button.button == sdl2.SDL_BUTTON_LEFT):
+                        asyncio.async(self.client.spawn())
+                        
             self.now = time.monotonic()
+
+            if self.move is not None:
+                if self.move != self.last_move:
+                    asyncio.async(self.client.move(*self.move))
+                    self.last_move = self.move
+                    self.last_move_send = self.now
+                elif self.now - self.last_move_send > 0.2:
+                    self.move = self.mouse_to_stage_coords(self.mouse_x,
+                                                           self.mouse_y)
+                    if self.move:
+                        asyncio.async(self.client.move(*self.move))
+                        self.last_move = self.move
+                        self.last_move_send = self.now
+
             delay = abs(self.last - self.now)
             if delay > 1 / FRAME_RATE:
-                # Read sdl events
-                for event in sdl2.ext.get_events():
-                    if event.type == sdl2.SDL_QUIT:
-                        sys.exit(0)
-                    elif event.type == sdl2.SDL_KEYDOWN:
-                        if event.key.keysym.sym == sdl2.SDLK_SPACE:
-                            yield from self.client.split()
-                        elif event.key.keysym.sym == sdl2.SDLK_w:
-                            yield from self.client.eject()
-
                 self.refresh()
-
-                if not self.view_only:
-                    buttons = mouse.SDL_GetMouseState(self.mouse_x,
-                                                      self.mouse_y)
-                    if buttons == 1:
-                        yield from self.client.spawn()
-
-                    move = self.mouse_to_stage_coords(self.mouse_x.value,
-                                                      self.mouse_y.value)
-                    if move is not None:
-                        x, y = move
-                        yield from self.client.move(x, y)
-
                 self.last = self.now

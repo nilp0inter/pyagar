@@ -49,7 +49,7 @@ def main():
     dsts = []
 
     if not args.no_visualize:
-        visualizer = Visualizer(client, view_only=args.spectate)
+        visualizer = Visualizer(client, view_only=args.spectate or args.auto)
         coros.append(visualizer.run())
         dsts.append(visualizer)
 
@@ -72,8 +72,7 @@ def main():
     LOOP.run_until_complete(client.connect())
 
     print("Starting!")
-    LOOP.run_until_complete(asyncio.wait(coros,
-                                         return_when=asyncio.FIRST_EXCEPTION))
+    LOOP.run_until_complete(asyncio.wait(coros))
 
 
 if __name__ == '__main__':
