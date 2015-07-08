@@ -286,17 +286,18 @@ class Visualizer:
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
-                            yield from self.client.split()
+                            asyncio.async(self.client.split())
                         elif event.key.keysym.sym == sdl2.SDLK_w:
-                            yield from self.client.eject()
+                            asyncio.async(self.client.eject())
                     elif event.type == sdl2.SDL_MOUSEMOTION:
                         move = self.mouse_to_stage_coords(event.motion.x,
                                                           event.motion.y)
                         if move:
-                            yield from self.client.move(*move)
+                            x, y = move
+                            asyncio.async(self.client.move(x, y))
                     elif (event.type == sdl2.SDL_MOUSEBUTTONDOWN and
                           event.button.button == sdl2.SDL_BUTTON_LEFT):
-                        yield from self.client.spawn()
+                        asyncio.async(self.client.spawn())
                         
             self.now = time.monotonic()
             delay = abs(self.last - self.now)
