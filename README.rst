@@ -18,6 +18,8 @@ In order to run this software you'll need:
 
 - Python 3.4+
 - SDL2 (you may found in your distribution as libsdl2)
+- sdl2_ttf https://www.libsdl.org/projects/SDL_ttf/
+- sdl2_gfx http://cms.ferzkopp.net/index.php/software/13-sdl-gfx
 
 
 Installation

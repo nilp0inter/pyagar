@@ -84,8 +84,21 @@ class Client:
     @asyncio.coroutine
     def spawn(self):
         yield from self.connected.wait()
-        msg = struct.pack("B" + ("H" * len(self.nick)),
-                          0, *self.nick.encode('utf-8'))
+        rawnick = self.nick.encode('utf-8')
+        msg = struct.pack("<B" + ("H" * len(rawnick)),
+                          0, *rawnick)
+        yield from self.ws.send(msg)
+
+    @asyncio.coroutine
+    def split(self):
+        yield from self.connected.wait()
+        msg = struct.pack("<B", 17)
+        yield from self.ws.send(msg)
+
+    @asyncio.coroutine
+    def eject(self):
+        yield from self.connected.wait()
+        msg = struct.pack("<B", 21)
         yield from self.ws.send(msg)
 
     @asyncio.coroutine
