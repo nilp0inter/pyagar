@@ -1,4 +1,5 @@
 from collections import namedtuple
+import os
 import asyncio
 import ctypes
 import sys
@@ -6,6 +7,8 @@ import time
 import traceback
 
 from sdl2 import mouse
+from sdl2 import sdlgfx
+from sdl2 import sdlttf
 from sdl2 import video
 import sdl2
 import sdl2.ext
@@ -18,12 +21,17 @@ FRAME_RATE = 60
 BLACK = sdl2.ext.Color(0, 0, 0)
 WHITE = sdl2.ext.Color(255, 255, 255)
 
+HERE = os.path.realpath(os.path.dirname(__file__))
+
+FONT_PATH = os.path.join(HERE, 'static', 'Ubuntu-R.ttf')
+
 
 class Visualizer:
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
     def __init__(self, client, view_only=False):
+        self.names = dict()
         self.messages = asyncio.Queue()
         self.client = client
         self.view_only = view_only
@@ -80,7 +88,12 @@ class Visualizer:
             0,
             self.width,
             self.height,
-            32, 0, 0, 0, 0)
+            32,
+            0,
+            0,
+            0,
+            0)
+        self.renderer = sdl2.SDL_CreateSoftwareRenderer(self.stage)
 
     @property
     def camera(self):
@@ -110,6 +123,33 @@ class Visualizer:
 
         return sdl2.SDL_Rect(x, y, w, h)
 
+    @property
+    def camera_border_rect(self):
+        x, y = self.to_coords(self.camera.x, self.camera.y)
+        w = int(self.width * self.camera.zoom)
+        h = int(self.height * self.camera.zoom)
+
+        x = int(x - w / 2)
+        y = int(y - h / 2)
+
+        if x + w > self.width:
+            x = self.width - w
+        if y + h > self.height:
+            y = self.height - h
+        if x < 0:
+            x = 0
+        if y < 0:
+            y = 0
+
+        return sdl2.SDL_Rect(x-w, y-h, w*2, h*2)
+
+    @staticmethod
+    def hex2SDLcolor(h):
+        i = int(h, base=16)
+        return sdl2.SDL_Color((i & 0xff0000) >> 16,
+                              (i & 0x00ff00) >> 8,
+                              (i & 0x0000ff),
+                              255)
     @staticmethod
     def hex2color(h):
         i = int(h, base=16)
@@ -118,34 +158,74 @@ class Visualizer:
                               (i & 0x0000ff))
 
     def refresh(self):
-        # Set background
-        res = sdl2.surface.SDL_FillRect(
-            self.stage.contents,
-            self.camera_rect,
-            sdl2.ext.prepare_color(BLACK, self.stage.contents))
-
         # Draw the cells
         for cell in self.players.values():
             if cell.id == self.player_id:
-                color = WHITE
-                self.camera = Camera(cell.x, cell.y, 0.125)
+                self.camera = Camera(cell.x, cell.y, 0.085)
+                label = self.client.nick
             else:
-                color = self.hex2color(cell.color)
-            color = sdl2.ext.prepare_color(color, self.stage.contents)
+                label = self.names.get(cell.id)
+
+            color = sdl2.ext.prepare_color(self.hex2color(cell.color),
+                                           self.stage.contents)
+
             x, y = self.to_coords(cell.x, cell.y)
-            w = h = int(cell.size * 1.5)
-            x = int(x - w / 2)
-            y = int(y - h / 2)
-            sdl2.surface.SDL_FillRect(self.stage.contents,
-                                      sdl2.SDL_Rect(x, y, w, h),
-                                      color)
-        
+
+            # Cell border
+            fill_color = int('ff' + cell.color, base=16)
+
+            r = int(cell.color[:2], base=16)
+            g = int(cell.color[2:4], base=16)
+            b = int(cell.color[4:], base=16)
+            border_color = int('ff%0.2x%0.2x%0.2x' % 
+                               (r - 0x10 if r > 0x10 else 0,
+                                g - 0x10 if g > 0x10 else 0,
+                                b - 0x10 if b > 0x10 else 0),
+                               base=16)
+
+            border_size = int((cell.size * 2) / 100)
+
+            # Cell border
+            sdlgfx.filledCircleColor(self.renderer, x, y,
+                                     cell.size + border_size,
+                                     border_color)
+
+            # Cell fill
+            sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
+                                     fill_color)
+            if label:
+                text = sdlttf.TTF_RenderUTF8_Solid(
+                    self.font,
+                    label.encode('utf-8', errors='ignore'),
+                    sdl2.SDL_Color(255, 255, 255, 255),
+                    self.hex2SDLcolor(cell.color))
+
+                text = sdl2.surface.SDL_ConvertSurface(
+                    text.contents,
+                    self.stage.contents.format,
+                    0)
+
+                sdl2.surface.SDL_BlitScaled(
+                    text,
+                    text.contents.clip_rect,
+                    self.stage.contents,
+                    sdl2.SDL_Rect(int(x-cell.size*0.75), int(y-cell.size*0.50),
+                                  int(cell.size*1.5), int(cell.size)))
+
+        camera = self.camera_rect
+
         # Copy to the screen
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
-        res = sdl2.surface.SDL_BlitScaled(self.stage.contents,
-                                          self.camera_rect,
-                                          self.winsurface,
-                                          sc_rect)
+        sdl2.surface.SDL_BlitScaled(self.stage.contents,
+                                    camera,
+                                    self.winsurface,
+                                    sc_rect)
+
+        # Set background
+        sdl2.surface.SDL_FillRect(
+            self.stage.contents,
+            self.camera_border_rect,
+            sdl2.ext.prepare_color(BLACK, self.stage.contents))
 
         # Refresh the window
         self.window.refresh()
@@ -154,6 +234,8 @@ class Visualizer:
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
+        sdlttf.TTF_Init()
+        self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
         self.last = time.monotonic()
 
         self.window = sdl2.ext.Window("agar.io", size=(self.s_width,
@@ -166,7 +248,8 @@ class Visualizer:
             data = yield from self.messages.get()
             if isinstance(data, ScreenAndCamera):
                 self.screen = data.screen
-                self.camera = data.camera
+
+                self.camera = Camera(data.camera.x, data.camera.y, 0.085)
                 break
 
         # Play
@@ -180,6 +263,8 @@ class Visualizer:
             elif isinstance(data, Status):
                 for cell in data.cells:
                     self.players[cell.id] = cell
+                    if cell.name:
+                        self.names[cell.id] = cell.name
                 for cell in data.dissapears:
                     if cell.id in self.players:
                         del self.players[cell.id]
@@ -196,6 +281,11 @@ class Visualizer:
                 for event in sdl2.ext.get_events():
                     if event.type == sdl2.SDL_QUIT:
                         sys.exit(0)
+                    elif event.type == sdl2.SDL_KEYDOWN:
+                        if event.key.keysym.sym == sdl2.SDLK_SPACE:
+                            yield from self.client.split()
+                        elif event.key.keysym.sym == sdl2.SDLK_w:
+                            yield from self.client.eject()
 
                 self.refresh()
 
