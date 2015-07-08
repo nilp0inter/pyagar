@@ -61,10 +61,14 @@ This package creates the command ``pyagar``.
 Controls
 ~~~~~~~~
 
-**Movement**: Mouse (Relative to the center of the window)
-**Start**: Mouse (Left button)
-**Eject mass**: W key
-**Split**: Space key
+====== ============================================
+Action Control
+====== ============================================
+Move   Mouse (Relative to the center of the window)
+Start  Mouse (Left button)
+Eject  ``W`` key
+Split  ``Space`` key
+====== ============================================
 
 
 Play examples
@@ -92,3 +96,10 @@ Play automatically using the default bot
 .. code-block:: bash
 
    $ pyagar --auto
+
+
+Other implementations
+---------------------
+
+- https://github.com/Gjum/pyAgar.io
+- https://github.com/Raeon/pygar
