@@ -90,6 +90,18 @@ class Client:
         yield from self.ws.send(msg)
 
     @asyncio.coroutine
+    def split(self):
+        yield from self.connected.wait()
+        msg = struct.pack("<B", 17)
+        yield from self.ws.send(msg)
+
+    @asyncio.coroutine
+    def eject(self):
+        yield from self.connected.wait()
+        msg = struct.pack("<B", 21)
+        yield from self.ws.send(msg)
+
+    @asyncio.coroutine
     def read(self):
         while True:
             yield from self.connected.wait()
