@@ -47,8 +47,9 @@ class Visualizer:
 
         self.last = self.last_move_send = time.monotonic()
 
-        self.s_width = 1024
-        self.s_height = 1024
+        self.s_width = None
+        self.s_height = None
+        self.s_refresh = None
 
         self.width = None
         self.height = None
@@ -238,10 +239,30 @@ class Visualizer:
         # Refresh the window
         self.window.refresh()
 
+    def get_screen_size(self):
+        display = sdl2.SDL_DisplayMode()
+        refresh = FRAME_RATE
+        size = None
+        for idx in range(sdl2.SDL_GetNumVideoDisplays()):
+            res = sdl2.SDL_GetCurrentDisplayMode(idx, display)
+            if res == 0:
+                if size:
+                    size = min(display.w, display.h, size)
+                else:
+                    size = min(display.w, display.h)
+                refresh = min(refresh, display.refresh_rate)
+
+        if size and refresh:
+            self.s_width = self.s_height = int(size * 0.9)
+            self.s_refresh = refresh
+        else:
+            print("Error getting display mode.")
+
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
         sdlttf.TTF_Init()
+        self.get_screen_size()
         self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
         self.last = time.monotonic()
 
@@ -263,7 +284,7 @@ class Visualizer:
         while True:
             try:
                 data = yield from asyncio.wait_for(self.messages.get(),
-                                                   1 / FRAME_RATE)
+                                                   1 / self.s_refresh)
             except asyncio.TimeoutError:
                 data = None
 
@@ -320,6 +341,6 @@ class Visualizer:
                         self.last_move_send = self.now
 
             delay = abs(self.last - self.now)
-            if delay > 1 / FRAME_RATE:
+            if delay > 1 / self.s_refresh:
                 self.refresh()
                 self.last = self.now
