@@ -160,6 +160,11 @@ class Visualizer:
                               (i & 0x00ff00) >> 8,
                               (i & 0x0000ff))
 
+    def get_font(self, size):
+        size = size / 4
+        best = min(self.font.keys(), key=lambda x: abs(size-x))
+        return self.font[best]
+
     def refresh(self):
         main = self.players.get(self.player_id)
         if main:
@@ -206,37 +211,40 @@ class Visualizer:
             # Cell fill
             sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
                                      fill_color)
-            #            if label:
-            #                text = sdlttf.TTF_RenderUTF8_Solid(
-            #                    self.font,
-            #                    label.encode('utf-8', errors='ignore'),
-            #                    sdl2.SDL_Color(255, 255, 255, 255),
-            #                    self.hex2SDLcolor(cell.color))
-            #
-            #                try:
-            #                    text.contents
-            #                except ValueError:
-            #                    pass
-            #                else:
-            #                    resized_text = sdl2.surface.SDL_ConvertSurface(
-            #                        text.contents,
-            #                        self.stage.contents.format,
-            #                        0)
-            #                    sdl2.SDL_FreeSurface(text.contents)
-            #                    try:
-            #                        resized_text.contents.clip_rect,
-            #                    except ValueError:
-            #                        pass
-            #                    else:
-            #                        sdl2.surface.SDL_BlitScaled(
-            #                            resized_text,
-            #                            resized_text.contents.clip_rect,
-            #                            self.stage.contents,
-            #                            sdl2.SDL_Rect(int(x-cell.size*0.75),
-            #                                          int(y-cell.size*0.50),
-            #                                          int(cell.size*1.5),
-            #                                          int(cell.size)))
-            #                        sdl2.SDL_FreeSurface(resized_text.contents)
+            if label:
+                text = sdlttf.TTF_RenderUTF8_Solid(
+                    self.get_font(cell.size),
+                    label.encode('utf-8', errors='ignore'),
+                    sdl2.SDL_Color(255, 255, 255, 255),
+                    self.hex2SDLcolor(cell.color))
+
+                try:
+                    text.contents
+                except ValueError:
+                    pass
+                else:
+                    text_texture = sdl2.SDL_CreateTextureFromSurface(
+                        self.renderer,
+                        text)
+                    sdl2.SDL_FreeSurface(text.contents)
+                    sdl2.SDL_RenderCopy(
+                        self.renderer,
+                        text_texture,
+                        None,
+                        sdl2.SDL_Rect(int(x-cell.size*0.75),
+                                      int(y-cell.size*0.50),
+                                      int(cell.size*1.5),
+                                      int(cell.size)))
+                    sdl2.SDL_DestroyTexture(text_texture)
+
+#                        sdl2.surface.SDL_BlitScaled(
+#                            resized_text,
+#                            resized_text.contents.clip_rect,
+#                            self.stage.contents,
+#                            sdl2.SDL_Rect(int(x-cell.size*0.75),
+#                                          int(y-cell.size*0.50),
+#                                          int(cell.size*1.5),
+#                                          int(cell.size)))
 
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
@@ -272,7 +280,14 @@ class Visualizer:
         sdl2.ext.init()
         sdlttf.TTF_Init()
         self.get_screen_size()
-        self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
+
+        self.font = {}
+        for i in range(5, 10):
+            size = 2**i
+            self.font[size] = sdlttf.TTF_OpenFont(
+                FONT_PATH.encode('ascii'),
+                size)
+
         self.last = time.monotonic()
 
         self.window = sdl2.ext.Window("pyagar", size=(self.s_width,
