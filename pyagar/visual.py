@@ -98,7 +98,7 @@ class Visualizer:
             sdl2.SDL_DestroyTexture(self.stage)
         self.stage = sdl2.SDL_CreateTexture(
             self.renderer,
-            sdl2.SDL_PIXELFORMAT_RGB24,
+            self.pixel_format,
             sdl2.SDL_TEXTUREACCESS_TARGET,
             self.width,
             self.height)
@@ -304,12 +304,16 @@ class Visualizer:
             -1, 
             self.renderer_flags)
 
+        display = sdl2.SDL_DisplayMode()
+        sdl2.SDL_GetWindowDisplayMode(self.window.window,
+                                  display)
+        self.pixel_format = display.format
+
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
             data = yield from self.messages.get()
             if isinstance(data, ScreenAndCamera):
                 self.screen = data.screen
-
                 self.camera = Camera(data.camera.x, data.camera.y, 0.085)
                 break
 
