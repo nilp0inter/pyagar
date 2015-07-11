@@ -13,8 +13,9 @@ from sdl2 import video
 import sdl2
 import sdl2.ext
 
-from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
+from pyagar.log import logger
 from pyagar.messages import Cell, Camera
+from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
 
 FRAME_RATE = 60
 
@@ -47,8 +48,9 @@ class Visualizer:
 
         self.last = self.last_move_send = time.monotonic()
 
-        self.s_width = 1024
-        self.s_height = 1024
+        self.s_width = None
+        self.s_height = None
+        self.s_refresh = None
 
         self.width = None
         self.height = None
@@ -174,7 +176,7 @@ class Visualizer:
 
         # Draw the cells (Viruses last)
         cells = sorted(self.players.values(),
-                       key=lambda c: c.is_virus)
+                       key=lambda c: (int(c.is_virus), c.size))
         for cell in cells:
             if cell.id == self.player_id:
                 label = self.client.nick
@@ -215,17 +217,22 @@ class Visualizer:
                     sdl2.SDL_Color(255, 255, 255, 255),
                     self.hex2SDLcolor(cell.color))
 
-                text = sdl2.surface.SDL_ConvertSurface(
-                    text.contents,
-                    self.stage.contents.format,
-                    0)
-
-                sdl2.surface.SDL_BlitScaled(
-                    text,
-                    text.contents.clip_rect,
-                    self.stage.contents,
-                    sdl2.SDL_Rect(int(x-cell.size*0.75), int(y-cell.size*0.50),
-                                  int(cell.size*1.5), int(cell.size)))
+                try:
+                    text = sdl2.surface.SDL_ConvertSurface(
+                        text.contents,
+                        self.stage.contents.format,
+                        0)
+                except ValueError:
+                    pass
+                else:
+                    sdl2.surface.SDL_BlitScaled(
+                        text,
+                        text.contents.clip_rect,
+                        self.stage.contents,
+                        sdl2.SDL_Rect(int(x-cell.size*0.75),
+                                      int(y-cell.size*0.50),
+                                      int(cell.size*1.5),
+                                      int(cell.size)))
 
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
@@ -238,10 +245,30 @@ class Visualizer:
         # Refresh the window
         self.window.refresh()
 
+    def get_screen_size(self):
+        display = sdl2.SDL_DisplayMode()
+        refresh = FRAME_RATE
+        size = None
+        for idx in range(sdl2.SDL_GetNumVideoDisplays()):
+            res = sdl2.SDL_GetCurrentDisplayMode(idx, display)
+            if res == 0:
+                if size:
+                    size = min(display.w, display.h, size)
+                else:
+                    size = min(display.w, display.h)
+                refresh = min(refresh, display.refresh_rate)
+
+        if size and refresh:
+            self.s_width = self.s_height = int(size * 0.8)
+            self.s_refresh = refresh
+        else:
+            print("Error getting display mode.")
+
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
         sdlttf.TTF_Init()
+        self.get_screen_size()
         self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
         self.last = time.monotonic()
 
@@ -263,7 +290,7 @@ class Visualizer:
         while True:
             try:
                 data = yield from asyncio.wait_for(self.messages.get(),
-                                                   1 / FRAME_RATE)
+                                                   1 / self.s_refresh)
             except asyncio.TimeoutError:
                 data = None
 
@@ -288,12 +315,15 @@ class Visualizer:
             # Read sdl events
             for event in sdl2.ext.get_events():
                 if event.type == sdl2.SDL_QUIT:
-                    sys.exit(0)
+                    logger.debug("QUIT event received.")
+                    return
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
+                            logger.debug("SPACE key pressed.")
                             asyncio.async(self.client.split())
                         elif event.key.keysym.sym == sdl2.SDLK_w:
+                            logger.debug("W key pressed.")
                             asyncio.async(self.client.eject())
                     elif event.type == sdl2.SDL_MOUSEMOTION:
                         self.mouse_x = event.motion.x
@@ -302,6 +332,7 @@ class Visualizer:
                                                                self.mouse_y)
                     elif (event.type == sdl2.SDL_MOUSEBUTTONDOWN and
                           event.button.button == sdl2.SDL_BUTTON_LEFT):
+                        logger.debug("Mouse button pressed.")
                         asyncio.async(self.client.spawn())
                         
             self.now = time.monotonic()
@@ -311,7 +342,7 @@ class Visualizer:
                     asyncio.async(self.client.move(*self.move))
                     self.last_move = self.move
                     self.last_move_send = self.now
-                elif self.now - self.last_move_send > 0.2:
+                elif self.now - self.last_move_send > 0.05:
                     self.move = self.mouse_to_stage_coords(self.mouse_x,
                                                            self.mouse_y)
                     if self.move:
@@ -320,6 +351,6 @@ class Visualizer:
                         self.last_move_send = self.now
 
             delay = abs(self.last - self.now)
-            if delay > 1 / FRAME_RATE:
+            if data is not None and delay > 1 / self.s_refresh:
                 self.refresh()
                 self.last = self.now
