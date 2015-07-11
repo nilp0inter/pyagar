@@ -129,7 +129,7 @@ class Client:
     def move(self, x, y):
         yield from self.connected.wait()
         yield from self.ws.send(struct.pack("<BddI", 16, x, y, 0))
-        logger.debug("Move sent.")
+        logger.debug("Move sent (x=%s, y=%s)", x, y)
 
     @asyncio.coroutine
     def spectate(self):

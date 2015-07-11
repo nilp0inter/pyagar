@@ -1,9 +1,7 @@
-"""
-The documentation is important!
-
-"""
-import asyncio
 from collections import namedtuple
+import asyncio
+
+from pyagar.log import logger
 from pyagar.messages import Status, PlayerCell, ScreenAndCamera
 
 Movement = namedtuple('Movement', ['x', 'y'])
@@ -17,6 +15,12 @@ class Controller:
         self.player_id = None
         self.alive = False
         self.screen = None
+
+    def get_name(self):
+        if not hasattr(self, 'name'):
+            return self.__class__.__name__
+        else:
+            return self.name
 
     def get_movement(self):
         raise NotImplementedError()
@@ -61,6 +65,8 @@ class Controller:
 
     @asyncio.coroutine
     def run(self):
+        logger.info("Running bot '%s'", self.get_name())
+
         while True:
             data = yield from self.messages.get()
             if isinstance(data, Status): 
@@ -150,7 +156,8 @@ class Center(Controller):
             return Movement(x=self.screen.x2 / 2, y=self.screen.y2 / 2)
 
 
-class EatWhenNoPredators(Escape, Greedy, Center):
+class EatWhenNoPredators(Escape, Greedy, Center, Controller):
+    """Only eats when all visible cells are smaller then itself."""
     escape = Escape.get_movement
     eat = Greedy.get_movement
     nothing_to_do = Center.get_movement

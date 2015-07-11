@@ -61,25 +61,30 @@ This package creates the command ``pyagar``.
 Controls
 ~~~~~~~~
 
-====== ============================================
-Action Control
-====== ============================================
-Move   Mouse (Relative to the center of the window)
-Start  Mouse (Left button)
-Eject  ``W`` key
-Split  ``Space`` key
-====== ============================================
+=========== ============================================
+Action      Control
+=========== ============================================
+Move        Mouse (Relative to the center of the window)
+Start       Mouse (Left button)
+Eject       ``W`` key
+Split       ``Space`` key
+Fullscreen  ``F`` key
+Zoom        Mouse wheel
+Exit        ``ESC`` key
+=========== ============================================
 
 
 Play examples
 -------------
 
-Play setting a custom nick
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Just play
+~~~~~~~~~
 
 .. code-block:: bash
 
-   $ pyagar -n doge
+   $ pyagar play
+
+Press the left mouse button to start.
 
 
 Just watch the game
@@ -87,15 +92,15 @@ Just watch the game
 
 .. code-block:: bash
 
-   $ pyagar --spectate
+   $ pyagar spectate
 
 
-Play automatically using the default bot
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Play automatically using a bot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   $ pyagar --auto
+   $ pyagar bot --type=EatWhenNoPredators
 
 
 Other implementations

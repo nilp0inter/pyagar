@@ -31,13 +31,19 @@ class Visualizer:
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
-    def __init__(self, client, view_only=False):
+    def __init__(self, client, view_only=False, hardware=True):
         self.names = dict()
         self.messages = asyncio.Queue()
         self.client = client
         self.view_only = view_only
         self.players = dict()
         self.player_id = None
+
+        self.renderer = None
+        if hardware:
+            self.renderer_flags = sdl2.SDL_RENDERER_ACCELERATED
+        else:
+            self.renderer_flags = sdl2.SDL_RENDERER_SOFTWARE
 
         self.window = None
         self.winsurface = None
@@ -59,6 +65,9 @@ class Visualizer:
 
         self._screen = None
         self._camera = None
+
+        self.fullscreen = False
+        self.user_zoom = 0
 
     def to_coords(self, x, y):
         if self.screen is None:
@@ -88,16 +97,15 @@ class Visualizer:
         self._screen = value
         self.width = int(value.x2 - value.x1)
         self.height = int(value.y2 - value.y1)
-        self.stage = sdl2.surface.SDL_CreateRGBSurface(
-            0,
+
+        if self.stage is not None:
+            sdl2.SDL_DestroyTexture(self.stage)
+        self.stage = sdl2.SDL_CreateTexture(
+            self.renderer,
+            self.pixel_format,
+            sdl2.SDL_TEXTUREACCESS_TARGET,
             self.width,
-            self.height,
-            32,
-            0,
-            0,
-            0,
-            0)
-        self.renderer = sdl2.SDL_CreateSoftwareRenderer(self.stage)
+            self.height)
 
     @property
     def camera(self):
@@ -110,12 +118,17 @@ class Visualizer:
     @property
     def camera_rect(self):
         x, y = self.to_coords(self.camera.x, self.camera.y)
-        w = int(self.width * self.camera.zoom)
-        h = int(self.height * self.camera.zoom)
 
+        zoom = self.camera.zoom + self.user_zoom / 1000
+
+        w = int(self.width * zoom)
+        h = int(self.height * zoom)
+
+        w = int(w * self.s_width / self.s_height)
+        
         x = int(x - w / 2)
         y = int(y - h / 2)
-
+        
         if x + w > self.width:
             x = self.width - w
         if y + h > self.height:
@@ -124,28 +137,8 @@ class Visualizer:
             x = 0
         if y < 0:
             y = 0
-
+        
         return sdl2.SDL_Rect(x, y, w, h)
-
-    @property
-    def camera_border_rect(self):
-        x, y = self.to_coords(self.camera.x, self.camera.y)
-        w = int(self.width * self.camera.zoom)
-        h = int(self.height * self.camera.zoom)
-
-        x = int(x - w / 2)
-        y = int(y - h / 2)
-
-        if x + w > self.width:
-            x = self.width - w
-        if y + h > self.height:
-            y = self.height - h
-        if x < 0:
-            x = 0
-        if y < 0:
-            y = 0
-
-        return sdl2.SDL_Rect(x-w, y-h, w*2, h*2)
 
     @staticmethod
     def hex2SDLcolor(h):
@@ -161,6 +154,11 @@ class Visualizer:
                               (i & 0x00ff00) >> 8,
                               (i & 0x0000ff))
 
+    def get_font(self, size):
+        size = size / 4
+        best = min(self.font.keys(), key=lambda x: abs(size-x))
+        return self.font[best]
+
     def refresh(self):
         main = self.players.get(self.player_id)
         if main:
@@ -169,10 +167,10 @@ class Visualizer:
         camera = self.camera_rect
 
         # Set background
-        sdl2.surface.SDL_FillRect(
-            self.stage.contents,
-            camera,
-            sdl2.ext.prepare_color(BLACK, self.stage.contents))
+        sdl2.SDL_SetRenderTarget(self.renderer,
+                                 self.stage)
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_RenderClear(self.renderer)
 
         # Draw the cells (Viruses last)
         cells = sorted(self.players.values(),
@@ -182,9 +180,6 @@ class Visualizer:
                 label = self.client.nick
             else:
                 label = self.names.get(cell.id)
-
-            color = sdl2.ext.prepare_color(self.hex2color(cell.color),
-                                           self.stage.contents)
 
             x, y = self.to_coords(cell.x, cell.y)
 
@@ -200,50 +195,61 @@ class Visualizer:
                                 b - 0x10 if b > 0x10 else 0),
                                base=16)
 
-            border_size = int((cell.size * 2) / 100)
+            if cell.is_virus:
+                border_size = int(cell.size / 5)
+            else:
+                border_size = int(cell.size / 25)
 
             # Cell border
             sdlgfx.filledCircleColor(self.renderer, x, y,
-                                     cell.size + border_size,
+                                     cell.size,
                                      border_color)
 
             # Cell fill
-            sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
+            sdlgfx.filledCircleColor(self.renderer, x, y,
+                                     cell.size - border_size,
                                      fill_color)
             if label:
                 text = sdlttf.TTF_RenderUTF8_Solid(
-                    self.font,
+                    self.get_font(cell.size),
                     label.encode('utf-8', errors='ignore'),
                     sdl2.SDL_Color(255, 255, 255, 255),
                     self.hex2SDLcolor(cell.color))
 
                 try:
-                    text = sdl2.surface.SDL_ConvertSurface(
-                        text.contents,
-                        self.stage.contents.format,
-                        0)
+                    text.contents
                 except ValueError:
                     pass
                 else:
-                    sdl2.surface.SDL_BlitScaled(
-                        text,
-                        text.contents.clip_rect,
-                        self.stage.contents,
+                    text_texture = sdl2.SDL_CreateTextureFromSurface(
+                        self.renderer,
+                        text)
+                    sdl2.SDL_FreeSurface(text.contents)
+                    sdl2.SDL_RenderCopy(
+                        self.renderer,
+                        text_texture,
+                        None,
                         sdl2.SDL_Rect(int(x-cell.size*0.75),
                                       int(y-cell.size*0.50),
                                       int(cell.size*1.5),
                                       int(cell.size)))
+                    sdl2.SDL_DestroyTexture(text_texture)
 
-        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
-        # Copy to the screen
-        sdl2.surface.SDL_BlitScaled(self.stage.contents,
-                                    camera,
-                                    self.winsurface,
-                                    sc_rect)
+        # Set background in window
+        sdl2.SDL_SetRenderTarget(self.renderer, None)
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_RenderClear(self.renderer)
 
-        # Refresh the window
-        self.window.refresh()
+        # Copy the stage
+        sdl2.SDL_RenderCopy(self.renderer,
+                            self.stage,
+                            camera,
+                            sdl2.SDL_Rect(0, 0, self.s_width, self.s_height))
+
+        # Refresh
+        sdl2.SDL_RenderPresent(self.renderer)
+
 
     def get_screen_size(self):
         display = sdl2.SDL_DisplayMode()
@@ -264,25 +270,68 @@ class Visualizer:
         else:
             print("Error getting display mode.")
 
+    def create_window(self):
+        if self.renderer is not None:
+            sdl2.SDL_DestroyRenderer(self.renderer)
+        if self.window is not None:
+            sdl2.SDL_DestroyWindow(self.window.window)
+
+        self.window = sdl2.ext.Window(
+            "pyagar",
+            size=(self.s_width, self.s_height),
+            flags=sdl2.SDL_WINDOW_RESIZABLE)
+
+        self.window.show()
+        self.renderer = sdl2.SDL_CreateRenderer(
+            self.window.window,
+            -1, 
+            self.renderer_flags)
+
+        display = sdl2.SDL_DisplayMode()
+        sdl2.SDL_GetWindowDisplayMode(self.window.window,
+                                      display)
+        self.pixel_format = display.format
+
+        if self._screen is not None:
+            self.screen = self._screen
+
+    def toggle_fullscreen(self):
+        if self.fullscreen:
+            logger.debug("Fullscreen OFF")
+            self.create_window()
+            sdl2.SDL_SetWindowSize(self.window.window,
+                                   self.s_width,
+                                   self.s_height)
+            self.fullscreen = False
+        else:
+            logger.debug("Fullscreen ON")
+            sdl2.SDL_SetWindowFullscreen(
+                self.window.window,
+                sdl2.SDL_WINDOW_FULLSCREEN)
+            self.fullscreen = True
+
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
         sdlttf.TTF_Init()
         self.get_screen_size()
-        self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
+
+        self.font = {}
+        for i in range(5, 10):
+            size = 2**i
+            self.font[size] = sdlttf.TTF_OpenFont(
+                FONT_PATH.encode('ascii'),
+                size)
+
         self.last = time.monotonic()
 
-        self.window = sdl2.ext.Window("agar.io", size=(self.s_width,
-                                                       self.s_height))
-        self.window.show()
-        self.winsurface = self.window.get_surface()
+        self.create_window()
 
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
             data = yield from self.messages.get()
             if isinstance(data, ScreenAndCamera):
                 self.screen = data.screen
-
                 self.camera = Camera(data.camera.x, data.camera.y, 0.085)
                 break
 
@@ -317,6 +366,30 @@ class Visualizer:
                 if event.type == sdl2.SDL_QUIT:
                     logger.debug("QUIT event received.")
                     return
+                elif event.type == sdl2.SDL_WINDOWEVENT:
+                    if event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
+                        self.s_width = event.window.data1
+                        self.s_height = event.window.data2
+                        logger.debug("Window resized %dx%d",
+                                     event.window.data1,
+                                     event.window.data2)
+                elif event.type == sdl2.SDL_KEYDOWN:
+                    if event.key.keysym.sym == sdl2.SDLK_f:
+                        self.toggle_fullscreen()
+                    elif event.key.keysym.sym == sdl2.SDLK_ESCAPE:
+                        if self.fullscreen:
+                            self.toggle_fullscreen()
+                        else:
+                            logger.debug("User pressed ESC, exiting.")
+                            return
+                elif event.type == sdl2.SDL_MOUSEWHEEL:
+                    self.user_zoom += event.wheel.y
+                    if self.user_zoom > 50:
+                        self.user_zoom = 50
+                    elif self.user_zoom < -50:
+                        self.user_zoom = -50
+                    else:
+                        logger.debug("UserZoom: %r", self.user_zoom)
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
