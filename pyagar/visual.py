@@ -218,21 +218,29 @@ class Visualizer:
                     self.hex2SDLcolor(cell.color))
 
                 try:
-                    text = sdl2.surface.SDL_ConvertSurface(
-                        text.contents,
-                        self.stage.contents.format,
-                        0)
+                    text.contents
                 except ValueError:
                     pass
                 else:
-                    sdl2.surface.SDL_BlitScaled(
-                        text,
-                        text.contents.clip_rect,
-                        self.stage.contents,
-                        sdl2.SDL_Rect(int(x-cell.size*0.75),
-                                      int(y-cell.size*0.50),
-                                      int(cell.size*1.5),
-                                      int(cell.size)))
+                    resized_text = sdl2.surface.SDL_ConvertSurface(
+                        text.contents,
+                        self.stage.contents.format,
+                        0)
+                    sdl2.SDL_FreeSurface(text.contents)
+                    try:
+                        resized_text.contents.clip_rect,
+                    except ValueError:
+                        pass
+                    else:
+                        sdl2.surface.SDL_BlitScaled(
+                            resized_text,
+                            resized_text.contents.clip_rect,
+                            self.stage.contents,
+                            sdl2.SDL_Rect(int(x-cell.size*0.75),
+                                          int(y-cell.size*0.50),
+                                          int(cell.size*1.5),
+                                          int(cell.size)))
+                        sdl2.SDL_FreeSurface(resized_text.contents)
 
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
