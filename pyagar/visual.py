@@ -351,20 +351,20 @@ class Visualizer:
                     if event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
                         self.s_width = event.window.data1
                         self.s_height = event.window.data2
-                        logger.info("Window resized %dx%d",
-                                    event.window.data1,
-                                    event.window.data2)
+                        logger.debug("Window resized %dx%d",
+                                     event.window.data1,
+                                     event.window.data2)
                 elif event.type == sdl2.SDL_KEYDOWN:
                     if event.key.keysym.sym == sdl2.SDLK_f:
                         if self.fullscreen:
-                            logger.info("Fullscreen OFF")
+                            logger.debug("Fullscreen OFF")
                             self.create_window()
                             sdl2.SDL_SetWindowSize(self.window.window,
                                                    self.s_width,
                                                    self.s_height)
                             self.fullscreen = False
                         else:
-                            logger.info("Fullscreen ON")
+                            logger.debug("Fullscreen ON")
                             sdl2.SDL_SetWindowFullscreen(
                                 self.window.window,
                                 sdl2.SDL_WINDOW_FULLSCREEN)
@@ -376,7 +376,7 @@ class Visualizer:
                     elif self.user_zoom < -50:
                         self.user_zoom = -50
                     else:
-                        logger.info("UserZoom: %r", self.user_zoom)
+                        logger.debug("UserZoom: %r", self.user_zoom)
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
