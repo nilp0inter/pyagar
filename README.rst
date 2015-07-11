@@ -46,16 +46,19 @@ This package creates the command ``pyagar``.
 
 .. code-block:: bash
 
-   $ pyagar --help
-   usage: pyagar [-h] [--no-visualize] [-n NICK] [--auto] [--debug] [--spectate]
+   usage: pyagar [-h] [--disable-hw] [-n NICK] [-d] [--version]
+                 {play,spectate,bot} ...
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      --no-visualize
-      -n NICK, --nick NICK
-      --auto
-      --debug
-      --spectate
+   positional arguments:
+     {play,spectate,bot}
+
+   optional arguments:
+     -h, --help            show this help message and exit
+     --disable-hw          Disable hardware acceleration.
+     -n NICK, --nick NICK
+     -d, --debug           Enable debug mode. Use multiple times to increase the
+                           debug level.
+     --version             show program's version number and exit
 
 
 Controls
