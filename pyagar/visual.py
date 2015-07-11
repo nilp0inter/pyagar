@@ -183,9 +183,6 @@ class Visualizer:
             else:
                 label = self.names.get(cell.id)
 
-            color = sdl2.ext.prepare_color(self.hex2color(cell.color),
-                                           self.stage.contents)
-
             x, y = self.to_coords(cell.x, cell.y)
 
             # Cell border
