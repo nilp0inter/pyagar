@@ -89,6 +89,15 @@ class Visualizer:
         self.width = int(value.x2 - value.x1)
         self.height = int(value.y2 - value.y1)
 
+        if self.stage is not None:
+            sdl2.SDL_DestroyTexture(self.stage)
+        self.stage = sdl2.SDL_CreateTexture(
+            self.renderer,
+            sdl2.SDL_PIXELFORMAT_RGB24,
+            sdl2.SDL_TEXTUREACCESS_TARGET,
+            self.width,
+            self.height)
+
     @property
     def camera(self):
         return self._camera
@@ -152,18 +161,6 @@ class Visualizer:
                               (i & 0x0000ff))
 
     def refresh(self):
-
-        self.stage = sdl2.surface.SDL_CreateRGBSurface(
-            0,
-            self.width,
-            self.height,
-            32,
-            0,
-            0,
-            0,
-            0)
-        self.stage_renderer = sdl2.SDL_CreateSoftwareRenderer(self.stage)
-
         main = self.players.get(self.player_id)
         if main:
             self.camera = Camera(main.x, main.y, 0.085)
@@ -171,10 +168,10 @@ class Visualizer:
         camera = self.camera_rect
 
         # Set background
-        sdl2.surface.SDL_FillRect(
-            self.stage.contents,
-            camera,
-            sdl2.ext.prepare_color(BLACK, self.stage.contents))
+        sdl2.SDL_SetRenderTarget(self.renderer,
+                                 self.stage)
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_RenderClear(self.renderer)
 
         # Draw the cells (Viruses last)
         cells = sorted(self.players.values(),
@@ -202,67 +199,54 @@ class Visualizer:
             border_size = int((cell.size * 2) / 100)
 
             # Cell border
-            sdlgfx.filledCircleColor(self.stage_renderer, x, y,
+            sdlgfx.filledCircleColor(self.renderer, x, y,
                                      cell.size + border_size,
                                      border_color)
 
             # Cell fill
-            sdlgfx.filledCircleColor(self.stage_renderer, x, y, cell.size,
+            sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
                                      fill_color)
-            if label:
-                text = sdlttf.TTF_RenderUTF8_Solid(
-                    self.font,
-                    label.encode('utf-8', errors='ignore'),
-                    sdl2.SDL_Color(255, 255, 255, 255),
-                    self.hex2SDLcolor(cell.color))
-
-                try:
-                    text.contents
-                except ValueError:
-                    pass
-                else:
-                    resized_text = sdl2.surface.SDL_ConvertSurface(
-                        text.contents,
-                        self.stage.contents.format,
-                        0)
-                    sdl2.SDL_FreeSurface(text.contents)
-                    try:
-                        resized_text.contents.clip_rect,
-                    except ValueError:
-                        pass
-                    else:
-                        sdl2.surface.SDL_BlitScaled(
-                            resized_text,
-                            resized_text.contents.clip_rect,
-                            self.stage.contents,
-                            sdl2.SDL_Rect(int(x-cell.size*0.75),
-                                          int(y-cell.size*0.50),
-                                          int(cell.size*1.5),
-                                          int(cell.size)))
-                        sdl2.SDL_FreeSurface(resized_text.contents)
+            #            if label:
+            #                text = sdlttf.TTF_RenderUTF8_Solid(
+            #                    self.font,
+            #                    label.encode('utf-8', errors='ignore'),
+            #                    sdl2.SDL_Color(255, 255, 255, 255),
+            #                    self.hex2SDLcolor(cell.color))
+            #
+            #                try:
+            #                    text.contents
+            #                except ValueError:
+            #                    pass
+            #                else:
+            #                    resized_text = sdl2.surface.SDL_ConvertSurface(
+            #                        text.contents,
+            #                        self.stage.contents.format,
+            #                        0)
+            #                    sdl2.SDL_FreeSurface(text.contents)
+            #                    try:
+            #                        resized_text.contents.clip_rect,
+            #                    except ValueError:
+            #                        pass
+            #                    else:
+            #                        sdl2.surface.SDL_BlitScaled(
+            #                            resized_text,
+            #                            resized_text.contents.clip_rect,
+            #                            self.stage.contents,
+            #                            sdl2.SDL_Rect(int(x-cell.size*0.75),
+            #                                          int(y-cell.size*0.50),
+            #                                          int(cell.size*1.5),
+            #                                          int(cell.size)))
+            #                        sdl2.SDL_FreeSurface(resized_text.contents)
 
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
-        texture = sdl2.SDL_CreateTextureFromSurface(self.renderer,
-                                                    self.stage.contents)
-        sdl2.SDL_RenderClear(self.renderer)
+        sdl2.SDL_SetRenderTarget(self.renderer, None)
         sdl2.SDL_RenderCopy(self.renderer,
-                            texture,
+                            self.stage,
                             camera,
                             sc_rect)
         sdl2.SDL_RenderPresent(self.renderer)
-        sdl2.SDL_FreeSurface(self.stage)
-        sdl2.SDL_DestroyTexture(texture)
 
-        # Copy to the screen
-#        sdl2.surface.SDL_BlitScaled(self.stage.contents,
-#                                    camera,
-#                                    self.winsurface,
-#                                    sc_rect)
-#
-
-        # Refresh the window
-#        self.window.refresh()
 
     def get_screen_size(self):
         display = sdl2.SDL_DisplayMode()
@@ -295,7 +279,6 @@ class Visualizer:
                                                       self.s_height))
 
         self.window.show()
-#        self.winsurface = self.window.get_surface()
         self.renderer = sdl2.SDL_CreateRenderer(self.window.window, -1, 0)
 
         # Window creation, we wait for a ScreenAndCamera message.
