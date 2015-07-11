@@ -1,13 +1,19 @@
 import argparse
 import asyncio
+import pkg_resources
 import sys
 
+from pyagar.log import logger
 from pyagar.client import Client
 from pyagar.visual import Visualizer
 from pyagar.control import EatWhenNoPredators, Escape, Closer, Greedy
 
 LOOP = asyncio.get_event_loop()
 NICK = "pyagar"
+try:
+    VERSION = pkg_resources.get_distribution("pyagar").version
+except:
+    VERSION = None
 
 
 @asyncio.coroutine
@@ -29,7 +35,7 @@ class Output:
     def run(self):
         while True:
             data = yield from self.messages.get()
-            print(data)
+            logger.debug(data)
 
 
 def main():
@@ -38,7 +44,12 @@ def main():
     parser.add_argument("--no-visualize", action="store_true")
     parser.add_argument("-n", "--nick", default=NICK)
     parser.add_argument("--auto", action="store_true")
-    parser.add_argument("--debug", action="store_true")
+    parser.add_argument(
+        "-d",
+        action="count",
+        dest="debug",
+        help=("Enable debug mode. "
+              "Use multiple times to increase the debug level."))
     parser.add_argument("--spectate", action="store_true")
     args = parser.parse_args()
 
@@ -58,7 +69,11 @@ def main():
         coros.append(controller.run())
         dsts.append(controller)
 
-    if args.debug:
+    if args.debug > 0:
+        import logging
+        logger.setLevel(logging.DEBUG)
+
+    if args.debug > 1:
         output = Output()
         coros.append(output.run())
         dsts.append(output)
@@ -68,11 +83,21 @@ def main():
 
     coros.append(hub(client, *dsts))
 
-    print("Connecting...")
+    logger.info("Starting pyagar!")
+    if VERSION:
+        logger.info("Version %s", VERSION)
+
     LOOP.run_until_complete(client.connect())
 
-    print("Starting!")
-    LOOP.run_until_complete(asyncio.wait(coros))
+    game = asyncio.wait(coros, return_when=asyncio.FIRST_COMPLETED)
+    done, not_done = LOOP.run_until_complete(game)
+    for coro in done:
+        try:
+            res = coro.result()
+        except:
+            logger.exception("Exception running coroutine.")
+
+    logger.info("Bye!")
 
 
 if __name__ == '__main__':

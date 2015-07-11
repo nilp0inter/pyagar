@@ -203,8 +203,8 @@ class SetQARA(BaseMSG):
 class MSGType(Enum):
     Status = 16
     CameraPosition = 17
-#    ResetSomething = 20
-#    SetQARA = 21
+    ResetSomething = 20
+    SetQARA = 21
     PlayerCell = 32
     Leaderboard = 49
     TeamsScore = 50
