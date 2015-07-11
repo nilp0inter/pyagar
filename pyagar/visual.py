@@ -65,6 +65,8 @@ class Visualizer:
         self._screen = None
         self._camera = None
 
+        self.fullscreen = False
+
     def to_coords(self, x, y):
         if self.screen is None:
             raise ValueError("Screen not setted.")
@@ -336,6 +338,20 @@ class Visualizer:
                         logger.info("Window resized %dx%d",
                                     event.window.data1,
                                     event.window.data2)
+                elif event.type == sdl2.SDL_KEYDOWN:
+                    if event.key.keysym.sym == sdl2.SDLK_f:
+                        if self.fullscreen:
+                            logger.info("Fullscreen OFF")
+                            sdl2.SDL_SetWindowFullscreen(
+                                self.window.window,
+                                sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
+                            self.fullscreen = False
+                        else:
+                            logger.info("Fullscreen ON")
+                            sdl2.SDL_SetWindowFullscreen(
+                                self.window.window,
+                                sdl2.SDL_WINDOW_FULLSCREEN)
+                            self.fullscreen = True
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:

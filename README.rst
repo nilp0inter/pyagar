@@ -61,14 +61,15 @@ This package creates the command ``pyagar``.
 Controls
 ~~~~~~~~
 
-====== ============================================
-Action Control
-====== ============================================
-Move   Mouse (Relative to the center of the window)
-Start  Mouse (Left button)
-Eject  ``W`` key
-Split  ``Space`` key
-====== ============================================
+=========== ============================================
+Action      Control
+=========== ============================================
+Move        Mouse (Relative to the center of the window)
+Start       Mouse (Left button)
+Eject       ``W`` key
+Split       ``Space`` key
+Fullscreen  ``F`` key
+=========== ============================================
 
 
 Play examples
