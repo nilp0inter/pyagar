@@ -195,15 +195,19 @@ class Visualizer:
                                 b - 0x10 if b > 0x10 else 0),
                                base=16)
 
-            border_size = int((cell.size * 2) / 100)
+            if cell.is_virus:
+                border_size = int(cell.size / 5)
+            else:
+                border_size = int(cell.size / 25)
 
             # Cell border
             sdlgfx.filledCircleColor(self.renderer, x, y,
-                                     cell.size + border_size,
+                                     cell.size,
                                      border_color)
 
             # Cell fill
-            sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
+            sdlgfx.filledCircleColor(self.renderer, x, y,
+                                     cell.size - border_size,
                                      fill_color)
             if label:
                 text = sdlttf.TTF_RenderUTF8_Solid(
@@ -291,6 +295,21 @@ class Visualizer:
         if self._screen is not None:
             self.screen = self._screen
 
+    def toggle_fullscreen(self):
+        if self.fullscreen:
+            logger.debug("Fullscreen OFF")
+            self.create_window()
+            sdl2.SDL_SetWindowSize(self.window.window,
+                                   self.s_width,
+                                   self.s_height)
+            self.fullscreen = False
+        else:
+            logger.debug("Fullscreen ON")
+            sdl2.SDL_SetWindowFullscreen(
+                self.window.window,
+                sdl2.SDL_WINDOW_FULLSCREEN)
+            self.fullscreen = True
+
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
@@ -356,19 +375,13 @@ class Visualizer:
                                      event.window.data2)
                 elif event.type == sdl2.SDL_KEYDOWN:
                     if event.key.keysym.sym == sdl2.SDLK_f:
+                        self.toggle_fullscreen()
+                    elif event.key.keysym.sym == sdl2.SDLK_ESCAPE:
                         if self.fullscreen:
-                            logger.debug("Fullscreen OFF")
-                            self.create_window()
-                            sdl2.SDL_SetWindowSize(self.window.window,
-                                                   self.s_width,
-                                                   self.s_height)
-                            self.fullscreen = False
+                            self.toggle_fullscreen()
                         else:
-                            logger.debug("Fullscreen ON")
-                            sdl2.SDL_SetWindowFullscreen(
-                                self.window.window,
-                                sdl2.SDL_WINDOW_FULLSCREEN)
-                            self.fullscreen = True
+                            logger.debug("User pressed ESC, exiting.")
+                            return
                 elif event.type == sdl2.SDL_MOUSEWHEEL:
                     self.user_zoom += event.wheel.y
                     if self.user_zoom > 50:
