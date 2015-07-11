@@ -69,6 +69,7 @@ Start       Mouse (Left button)
 Eject       ``W`` key
 Split       ``Space`` key
 Fullscreen  ``F`` key
+Zoom        Mouse wheel
 =========== ============================================
 
 

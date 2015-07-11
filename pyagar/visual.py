@@ -67,6 +67,7 @@ class Visualizer:
         self._camera = None
 
         self.fullscreen = False
+        self.user_zoom = 0
 
     def to_coords(self, x, y):
         if self.screen is None:
@@ -117,8 +118,11 @@ class Visualizer:
     @property
     def camera_rect(self):
         x, y = self.to_coords(self.camera.x, self.camera.y)
-        w = int(self.width * self.camera.zoom)
-        h = int(self.height * self.camera.zoom)
+
+        zoom = self.camera.zoom + self.user_zoom / 1000
+
+        w = int(self.width * zoom)
+        h = int(self.height * zoom)
 
         w = int(w * self.s_width / self.s_height)
         
@@ -365,6 +369,13 @@ class Visualizer:
                                 self.window.window,
                                 sdl2.SDL_WINDOW_FULLSCREEN)
                             self.fullscreen = True
+                elif event.type == sdl2.SDL_MOUSEWHEEL:
+                    self.user_zoom += event.wheel.y
+                    if self.user_zoom > 50:
+                        self.user_zoom = 50
+                    elif self.user_zoom < -50:
+                        self.user_zoom = -50
+                    logger.info("UserZoom: %r", self.user_zoom)
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
