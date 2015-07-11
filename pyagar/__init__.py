@@ -1,6 +1,8 @@
 import asyncio
 import pkg_resources
 
+from pyagar.log import logger
+
 
 LOOP = asyncio.get_event_loop()
 NICK = "pyagar"
