@@ -375,7 +375,8 @@ class Visualizer:
                         self.user_zoom = 50
                     elif self.user_zoom < -50:
                         self.user_zoom = -50
-                    logger.info("UserZoom: %r", self.user_zoom)
+                    else:
+                        logger.info("UserZoom: %r", self.user_zoom)
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
