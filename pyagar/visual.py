@@ -117,9 +117,11 @@ class Visualizer:
         w = int(self.width * self.camera.zoom)
         h = int(self.height * self.camera.zoom)
 
+        w = int(w * self.s_width / self.s_height)
+        
         x = int(x - w / 2)
         y = int(y - h / 2)
-
+        
         if x + w > self.width:
             x = self.width - w
         if y + h > self.height:
@@ -128,28 +130,8 @@ class Visualizer:
             x = 0
         if y < 0:
             y = 0
-
+        
         return sdl2.SDL_Rect(x, y, w, h)
-
-    @property
-    def camera_border_rect(self):
-        x, y = self.to_coords(self.camera.x, self.camera.y)
-        w = int(self.width * self.camera.zoom)
-        h = int(self.height * self.camera.zoom)
-
-        x = int(x - w / 2)
-        y = int(y - h / 2)
-
-        if x + w > self.width:
-            x = self.width - w
-        if y + h > self.height:
-            y = self.height - h
-        if x < 0:
-            x = 0
-        if y < 0:
-            y = 0
-
-        return sdl2.SDL_Rect(x-w, y-h, w*2, h*2)
 
     @staticmethod
     def hex2SDLcolor(h):
@@ -242,22 +224,19 @@ class Visualizer:
                                       int(cell.size)))
                     sdl2.SDL_DestroyTexture(text_texture)
 
-#                        sdl2.surface.SDL_BlitScaled(
-#                            resized_text,
-#                            resized_text.contents.clip_rect,
-#                            self.stage.contents,
-#                            sdl2.SDL_Rect(int(x-cell.size*0.75),
-#                                          int(y-cell.size*0.50),
-#                                          int(cell.size*1.5),
-#                                          int(cell.size)))
 
-        sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
-
+        # Set background in window
         sdl2.SDL_SetRenderTarget(self.renderer, None)
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_RenderClear(self.renderer)
+
+        # Copy the stage
         sdl2.SDL_RenderCopy(self.renderer,
                             self.stage,
                             camera,
-                            sc_rect)
+                            sdl2.SDL_Rect(0, 0, self.s_width, self.s_height))
+
+        # Refresh
         sdl2.SDL_RenderPresent(self.renderer)
 
 
@@ -295,8 +274,10 @@ class Visualizer:
 
         self.last = time.monotonic()
 
-        self.window = sdl2.ext.Window("pyagar", size=(self.s_width,
-                                                      self.s_height))
+        self.window = sdl2.ext.Window(
+            "pyagar",
+            size=(self.s_width, self.s_height),
+            flags=sdl2.SDL_WINDOW_RESIZABLE)
 
         self.window.show()
         self.renderer = sdl2.SDL_CreateRenderer(
@@ -348,6 +329,13 @@ class Visualizer:
                 if event.type == sdl2.SDL_QUIT:
                     logger.debug("QUIT event received.")
                     return
+                elif event.type == sdl2.SDL_WINDOWEVENT:
+                    if event.window.event == sdl2.SDL_WINDOWEVENT_RESIZED:
+                        self.s_width = event.window.data1
+                        self.s_height = event.window.data2
+                        logger.info("Window resized %dx%d",
+                                    event.window.data1,
+                                    event.window.data2)
                 if not self.view_only:
                     if event.type == sdl2.SDL_KEYDOWN:
                         if event.key.keysym.sym == sdl2.SDLK_SPACE:
