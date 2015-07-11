@@ -39,6 +39,7 @@ class Visualizer:
         self.players = dict()
         self.player_id = None
 
+        self.renderer = None
         if hardware:
             self.renderer_flags = sdl2.SDL_RENDERER_ACCELERATED
         else:
@@ -261,6 +262,31 @@ class Visualizer:
         else:
             print("Error getting display mode.")
 
+    def create_window(self):
+        if self.renderer is not None:
+            sdl2.SDL_DestroyRenderer(self.renderer)
+        if self.window is not None:
+            sdl2.SDL_DestroyWindow(self.window.window)
+
+        self.window = sdl2.ext.Window(
+            "pyagar",
+            size=(self.s_width, self.s_height),
+            flags=sdl2.SDL_WINDOW_RESIZABLE)
+
+        self.window.show()
+        self.renderer = sdl2.SDL_CreateRenderer(
+            self.window.window,
+            -1, 
+            self.renderer_flags)
+
+        display = sdl2.SDL_DisplayMode()
+        sdl2.SDL_GetWindowDisplayMode(self.window.window,
+                                      display)
+        self.pixel_format = display.format
+
+        if self._screen is not None:
+            self.screen = self._screen
+
     @asyncio.coroutine
     def run(self):
         sdl2.ext.init()
@@ -276,21 +302,7 @@ class Visualizer:
 
         self.last = time.monotonic()
 
-        self.window = sdl2.ext.Window(
-            "pyagar",
-            size=(self.s_width, self.s_height),
-            flags=sdl2.SDL_WINDOW_RESIZABLE)
-
-        self.window.show()
-        self.renderer = sdl2.SDL_CreateRenderer(
-            self.window.window,
-            -1, 
-            self.renderer_flags)
-
-        display = sdl2.SDL_DisplayMode()
-        sdl2.SDL_GetWindowDisplayMode(self.window.window,
-                                  display)
-        self.pixel_format = display.format
+        self.create_window()
 
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
@@ -342,9 +354,10 @@ class Visualizer:
                     if event.key.keysym.sym == sdl2.SDLK_f:
                         if self.fullscreen:
                             logger.info("Fullscreen OFF")
-                            sdl2.SDL_SetWindowFullscreen(
-                                self.window.window,
-                                sdl2.SDL_WINDOW_FULLSCREEN_DESKTOP)
+                            self.create_window()
+                            sdl2.SDL_SetWindowSize(self.window.window,
+                                                   self.s_width,
+                                                   self.s_height)
                             self.fullscreen = False
                         else:
                             logger.info("Fullscreen ON")
