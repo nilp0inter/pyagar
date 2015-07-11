@@ -88,16 +88,6 @@ class Visualizer:
         self._screen = value
         self.width = int(value.x2 - value.x1)
         self.height = int(value.y2 - value.y1)
-        self.stage = sdl2.surface.SDL_CreateRGBSurface(
-            0,
-            self.width,
-            self.height,
-            32,
-            0,
-            0,
-            0,
-            0)
-        self.renderer = sdl2.SDL_CreateSoftwareRenderer(self.stage)
 
     @property
     def camera(self):
@@ -162,6 +152,18 @@ class Visualizer:
                               (i & 0x0000ff))
 
     def refresh(self):
+
+        self.stage = sdl2.surface.SDL_CreateRGBSurface(
+            0,
+            self.width,
+            self.height,
+            32,
+            0,
+            0,
+            0,
+            0)
+        self.stage_renderer = sdl2.SDL_CreateSoftwareRenderer(self.stage)
+
         main = self.players.get(self.player_id)
         if main:
             self.camera = Camera(main.x, main.y, 0.085)
@@ -200,12 +202,12 @@ class Visualizer:
             border_size = int((cell.size * 2) / 100)
 
             # Cell border
-            sdlgfx.filledCircleColor(self.renderer, x, y,
+            sdlgfx.filledCircleColor(self.stage_renderer, x, y,
                                      cell.size + border_size,
                                      border_color)
 
             # Cell fill
-            sdlgfx.filledCircleColor(self.renderer, x, y, cell.size,
+            sdlgfx.filledCircleColor(self.stage_renderer, x, y, cell.size,
                                      fill_color)
             if label:
                 text = sdlttf.TTF_RenderUTF8_Solid(
@@ -241,14 +243,26 @@ class Visualizer:
 
         sc_rect = sdl2.SDL_Rect(0, 0, self.s_width, self.s_height)
 
+        texture = sdl2.SDL_CreateTextureFromSurface(self.renderer,
+                                                    self.stage.contents)
+        sdl2.SDL_RenderClear(self.renderer)
+        sdl2.SDL_RenderCopy(self.renderer,
+                            texture,
+                            camera,
+                            sc_rect)
+        sdl2.SDL_RenderPresent(self.renderer)
+        sdl2.SDL_FreeSurface(self.stage)
+        sdl2.SDL_DestroyTexture(texture)
+
         # Copy to the screen
-        sdl2.surface.SDL_BlitScaled(self.stage.contents,
-                                    camera,
-                                    self.winsurface,
-                                    sc_rect)
+#        sdl2.surface.SDL_BlitScaled(self.stage.contents,
+#                                    camera,
+#                                    self.winsurface,
+#                                    sc_rect)
+#
 
         # Refresh the window
-        self.window.refresh()
+#        self.window.refresh()
 
     def get_screen_size(self):
         display = sdl2.SDL_DisplayMode()
@@ -277,10 +291,12 @@ class Visualizer:
         self.font = sdlttf.TTF_OpenFont(FONT_PATH.encode('ascii'), 256)
         self.last = time.monotonic()
 
-        self.window = sdl2.ext.Window("agar.io", size=(self.s_width,
-                                                       self.s_height))
+        self.window = sdl2.ext.Window("pyagar", size=(self.s_width,
+                                                      self.s_height))
+
         self.window.show()
-        self.winsurface = self.window.get_surface()
+#        self.winsurface = self.window.get_surface()
+        self.renderer = sdl2.SDL_CreateRenderer(self.window.window, -1, 0)
 
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
