@@ -43,6 +43,9 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--no-visualize", action="store_true")
+    parser.add_argument("--disable-hw",
+                        action="store_true",
+                        help="Disable hardware acceleration.")
     parser.add_argument("-n", "--nick", default=NICK)
     parser.add_argument("--auto", action="store_true")
     parser.add_argument(
@@ -61,7 +64,10 @@ def main():
     dsts = []
 
     if not args.no_visualize:
-        visualizer = Visualizer(client, view_only=args.spectate or args.auto)
+        visualizer = Visualizer(
+            client,
+            view_only=args.spectate or args.auto,
+            hardware=not args.disable_hw)
         coros.append(visualizer.run())
         dsts.append(visualizer)
 

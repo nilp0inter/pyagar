@@ -31,13 +31,18 @@ class Visualizer:
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
-    def __init__(self, client, view_only=False):
+    def __init__(self, client, view_only=False, hardware=True):
         self.names = dict()
         self.messages = asyncio.Queue()
         self.client = client
         self.view_only = view_only
         self.players = dict()
         self.player_id = None
+
+        if hardware:
+            self.renderer_flags = sdl2.SDL_RENDERER_ACCELERATED
+        else:
+            self.renderer_flags = sdl2.SDL_RENDERER_SOFTWARE
 
         self.window = None
         self.winsurface = None
@@ -294,7 +299,10 @@ class Visualizer:
                                                       self.s_height))
 
         self.window.show()
-        self.renderer = sdl2.SDL_CreateRenderer(self.window.window, -1, 0)
+        self.renderer = sdl2.SDL_CreateRenderer(
+            self.window.window,
+            -1, 
+            self.renderer_flags)
 
         # Window creation, we wait for a ScreenAndCamera message.
         while True:
