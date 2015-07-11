@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import logging
 import pkg_resources
 import sys
 
@@ -69,17 +70,16 @@ def main():
         coros.append(controller.run())
         dsts.append(controller)
 
-    if args.debug > 0:
-        import logging
+    if args.debug is not None:
         logger.setLevel(logging.DEBUG)
 
-    if args.debug > 1:
-        output = Output()
-        coros.append(output.run())
-        dsts.append(output)
+        if args.debug > 1:
+            output = Output()
+            coros.append(output.run())
+            dsts.append(output)
+    else:
+        logger.setLevel(logging.INFO)
 
-    if args.spectate:
-        coros.append(client.spectate())
 
     coros.append(hub(client, *dsts))
 
@@ -88,6 +88,9 @@ def main():
         logger.info("Version %s", VERSION)
 
     LOOP.run_until_complete(client.connect())
+
+    if args.spectate:
+        LOOP.run_until_complete(client.spectate())
 
     game = asyncio.wait(coros, return_when=asyncio.FIRST_COMPLETED)
     done, not_done = LOOP.run_until_complete(game)
