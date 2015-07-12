@@ -443,6 +443,6 @@ class Visualizer:
                         self.last_move_send = self.now
 
             delay = abs(self.last - self.now)
-            if data is not None and delay > 1 / self.s_refresh:
+            if self.messages.empty() and delay > 1 / self.s_refresh:
                 self.refresh()
                 self.last = self.now
