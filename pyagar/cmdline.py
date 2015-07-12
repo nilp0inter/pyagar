@@ -1,3 +1,10 @@
+"""
+``pyagar.cmdline``
+==================
+
+Provides the cmdline facility.
+
+"""
 import argparse
 import asyncio
 import imp
@@ -5,13 +12,14 @@ import logging
 import sys
 import textwrap
 
-from pyagar import LOOP, NICK, VERSION, hub
+from pyagar import LOOP, NICK, VERSION
 from pyagar.client import Client
 from pyagar.log import logger
+from pyagar.utils import hub
 from pyagar.visual import Visualizer
 
 
-def parser():
+def pyagar_parser():
     """Generates the argument parser."""
     parser = argparse.ArgumentParser()
 
@@ -39,10 +47,10 @@ def parser():
     subparsers = parser.add_subparsers(dest="command")
 
     # Play subcommand
-    play = subparsers.add_parser("play")
+    subparsers.add_parser("play")
 
     # Spectate subcommand
-    spectate = subparsers.add_parser("spectate")
+    subparsers.add_parser("spectate")
 
     # Bot subcommand
     bot = subparsers.add_parser("bot")
@@ -58,7 +66,7 @@ def parser():
 def pyagar():
     """pyagar cli interface."""
 
-    args = parser().parse_args()
+    args = pyagar_parser().parse_args()
     if args.command is None:
         logger.error("No subcommand present. To play execute: 'pyagar play'")
         sys.exit(1)
@@ -80,7 +88,7 @@ def pyagar():
         logger.setLevel(logging.DEBUG)
 
         if args.debug > 1:
-            from pyagar import Output
+            from pyagar.utils import Output
             output = Output()
             coros.append(output.run())
             dsts.append(output)
@@ -91,10 +99,10 @@ def pyagar():
         if args.list_types:
             print("Available bot types:\n")
             from pyagar.control import Controller
-            for c in Controller.__subclasses__():
-                doc = c.__doc__ if c.__doc__ else '**Not documented**'
+            for cls in Controller.__subclasses__():
+                doc = cls.__doc__ if cls.__doc__ else '**Not documented**'
                 dedented_text = textwrap.dedent(doc).strip()
-                name = ' * %s: ' % c.__name__
+                name = ' * %s: ' % cls.__name__
                 msg = textwrap.fill(
                     dedented_text,
                     initial_indent=name,
@@ -139,10 +147,10 @@ def pyagar():
         LOOP.run_until_complete(client.spectate())
 
     game = asyncio.wait(coros, return_when=asyncio.FIRST_COMPLETED)
-    done, not_done = LOOP.run_until_complete(game)
+    done, _ = LOOP.run_until_complete(game)
     for coro in done:
         try:
-            res = coro.result()
+            coro.result()
         except:
             logger.exception("Exception running coroutine.")
 

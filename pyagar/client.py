@@ -1,4 +1,11 @@
-import sys
+"""
+``pyagar.client``
+=================
+
+This module contains the Client class.
+
+"""
+# pylint: disable=I0011,C0103
 import base64
 import random
 import struct
@@ -45,6 +52,13 @@ import websockets
 
 
 class Client:
+    """
+    The client.
+
+    Manages the connection, receives the data from the server and sends
+    back any command requested by the player.
+
+    """
     def __init__(self, nick, location='EU-London'):
         self.nick = nick
         self.location = location
@@ -55,6 +69,7 @@ class Client:
         self.messages = asyncio.Queue()
 
     def get_server(self):
+        """Requests a new server and token."""
         data = b"\n".join((self.location.encode('ascii'),
                            INIT_TOKEN.encode('ascii')))
         res = requests.post('http://m.agar.io/',
@@ -69,6 +84,7 @@ class Client:
 
     @asyncio.coroutine
     def connect(self):
+        """Connects to the server."""
         if self.server is None:
             self.get_server()
 
@@ -88,6 +104,7 @@ class Client:
 
     @asyncio.coroutine
     def spawn(self):
+        """Sends the ``spawn`` command."""
         yield from self.connected.wait()
         rawnick = self.nick.encode('utf-8')
         msg = struct.pack("<B" + ("H" * len(rawnick)),
@@ -97,6 +114,7 @@ class Client:
 
     @asyncio.coroutine
     def split(self):
+        """Sends the ``split cell`` command."""
         yield from self.connected.wait()
         msg = struct.pack("<B", 17)
         yield from self.ws.send(msg)
@@ -104,6 +122,7 @@ class Client:
 
     @asyncio.coroutine
     def eject(self):
+        """Sends the ``mass eject`` command."""
         yield from self.connected.wait()
         msg = struct.pack("<B", 21)
         yield from self.ws.send(msg)
@@ -111,6 +130,7 @@ class Client:
 
     @asyncio.coroutine
     def read(self):
+        """Read, decode and queue data packets from the server."""
         while True:
             yield from self.connected.wait()
             data = yield from self.ws.recv()
@@ -127,12 +147,14 @@ class Client:
 
     @asyncio.coroutine
     def move(self, x, y):
+        """Sends the ``movement`` command."""
         yield from self.connected.wait()
         yield from self.ws.send(struct.pack("<BddI", 16, x, y, 0))
         logger.debug("Move sent (x=%s, y=%s)", x, y)
 
     @asyncio.coroutine
     def spectate(self):
+        """Initiates the spectator mode."""
         yield from self.connected.wait()
         yield from asyncio.sleep(2)
         yield from self.ws.send(struct.pack("B", 1))

@@ -1,3 +1,11 @@
+"""
+``pyagar.controller``
+=====================
+
+Some very simple bots.
+
+"""
+# pylint: disable=I0011,C0103
 from collections import namedtuple
 import asyncio
 
@@ -8,6 +16,10 @@ Movement = namedtuple('Movement', ['x', 'y'])
 
 
 class Controller:
+    """
+    All bots should inherit from this class.
+
+    """
     def __init__(self, client):
         self.client = client
         self.messages = asyncio.Queue()
@@ -17,12 +29,14 @@ class Controller:
         self.screen = None
 
     def get_name(self):
+        """Returns the name of this bot."""
         if not hasattr(self, 'name'):
             return self.__class__.__name__
         else:
-            return self.name
+            return getattr(self, 'name')
 
     def get_movement(self):
+        """The method that subclasses must implement."""
         raise NotImplementedError()
 
     @property
@@ -45,10 +59,12 @@ class Controller:
 
     @property
     def player(self):
+        """Returns the player main cell. None if not exists."""
         return self.cells.get(self.player_id)
 
     @property
     def viruses(self):
+        """Returns a list of visible viruses."""
         return [c for c in self.cells.values() if c.is_virus]
 
     @property
@@ -59,17 +75,19 @@ class Controller:
 
     @asyncio.coroutine
     def do_move(self):
+        """Make a movement."""
         m = self.get_movement()
         if m is not None:
             yield from self.client.move(m.x, m.y)
 
     @asyncio.coroutine
     def run(self):
+        """The main loop of the bot."""
         logger.info("Running bot '%s'", self.get_name())
 
         while True:
             data = yield from self.messages.get()
-            if isinstance(data, Status): 
+            if isinstance(data, Status):
                 for cell in data.cells:
                     self.cells[cell.id] = cell
                 for cell in data.dissapears:
@@ -91,7 +109,7 @@ class Controller:
             if not self.alive:
                 yield from self.client.spawn()
             yield from self.do_move()
-    
+
 
 class Closer(Controller):
     """Go to the closer "non-virus" cell, no matter the type."""
@@ -120,7 +138,8 @@ class Greedy(Controller):
 class Escape(Controller):
     """Escape from bigger opponents."""
 
-    def escape_vector(self, player, cell):
+    @staticmethod
+    def escape_vector(player, cell):
         """Movement to escape from a cell."""
         ox = (cell.x - player.x)
         oy = (cell.y - player.y)
@@ -129,14 +148,16 @@ class Escape(Controller):
                         player.y - oy)
 
     def compound_escape_vector(self, vectors):
+        """Returns the sum of all ``vectors``."""
         p = self.player
         xs = [c.x - p.x for c in vectors]
         ys = [c.y - p.y for c in vectors]
 
-        x=sum(xs)
-        y=sum(ys)
+        x = sum(xs)
+        y = sum(ys)
 
-        return Movement(x=p.x+x, y=p.y+y)
+        return Movement(x=p.x + x,
+                        y=p.y + y)
 
     def get_movement(self):
         p = self.player
@@ -164,7 +185,6 @@ class EatWhenNoPredators(Escape, Greedy, Center, Controller):
 
     def get_movement(self):
         p = self.player
-        o = self.predators
         if p:
             if not self.predators:
                 if self.edible:

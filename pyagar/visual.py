@@ -1,20 +1,22 @@
-from collections import namedtuple
+"""
+``pyagar.visual``
+=================
+
+Provides the default visualizer.
+
+"""
+# pylint: disable=C0103
 import os
 import asyncio
-import ctypes
-import sys
 import time
-import traceback
 
-from sdl2 import mouse
 from sdl2 import sdlgfx
 from sdl2 import sdlttf
-from sdl2 import video
 import sdl2
 import sdl2.ext
 
 from pyagar.log import logger
-from pyagar.messages import Cell, Camera
+from pyagar.messages import Camera
 from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
 
 FRAME_RATE = 60
@@ -28,6 +30,7 @@ FONT_PATH = os.path.join(HERE, 'static', 'Ubuntu-R.ttf')
 
 
 class Visualizer:
+    """SDL based visualizer."""
 
     factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
 
@@ -52,7 +55,7 @@ class Visualizer:
         self.move = None
         self.last_move = None
 
-        self.last = self.last_move_send = time.monotonic()
+        self.now = self.last = self.last_move_send = time.monotonic()
 
         self.s_width = None
         self.s_height = None
@@ -68,6 +71,8 @@ class Visualizer:
 
         self.fullscreen = False
         self.user_zoom = 0
+        self.pixel_format = None
+        self.font = {}
 
     def to_coords(self, x, y):
         if self.screen is None:
@@ -85,7 +90,7 @@ class Visualizer:
         else:
             m_x = cell.x + (x - self.s_width / 2)
             m_y = cell.y + (y - self.s_height / 2)
-            
+
             return m_x, m_y
 
     @property
@@ -125,10 +130,10 @@ class Visualizer:
         h = int(self.height * zoom)
 
         w = int(w * self.s_width / self.s_height)
-        
+
         x = int(x - w / 2)
         y = int(y - h / 2)
-        
+
         if x + w > self.width:
             x = self.width - w
         if y + h > self.height:
@@ -137,22 +142,16 @@ class Visualizer:
             x = 0
         if y < 0:
             y = 0
-        
+
         return sdl2.SDL_Rect(x, y, w, h)
 
     @staticmethod
-    def hex2SDLcolor(h):
+    def hex2color(h):
         i = int(h, base=16)
         return sdl2.SDL_Color((i & 0xff0000) >> 16,
                               (i & 0x00ff00) >> 8,
                               (i & 0x0000ff),
                               255)
-    @staticmethod
-    def hex2color(h):
-        i = int(h, base=16)
-        return sdl2.ext.Color((i & 0xff0000) >> 16,
-                              (i & 0x00ff00) >> 8,
-                              (i & 0x0000ff))
 
     def get_font(self, size):
         size = size / 4
@@ -169,7 +168,7 @@ class Visualizer:
         # Set background
         sdl2.SDL_SetRenderTarget(self.renderer,
                                  self.stage)
-        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255)
         sdl2.SDL_RenderClear(self.renderer)
 
         # Draw the cells (Viruses last)
@@ -189,7 +188,7 @@ class Visualizer:
             r = int(cell.color[:2], base=16)
             g = int(cell.color[2:4], base=16)
             b = int(cell.color[4:], base=16)
-            border_color = int('ff%0.2x%0.2x%0.2x' % 
+            border_color = int('ff%0.2x%0.2x%0.2x' %
                                (r - 0x10 if r > 0x10 else 0,
                                 g - 0x10 if g > 0x10 else 0,
                                 b - 0x10 if b > 0x10 else 0),
@@ -214,7 +213,7 @@ class Visualizer:
                     self.get_font(cell.size),
                     label.encode('utf-8', errors='ignore'),
                     sdl2.SDL_Color(255, 255, 255, 255),
-                    self.hex2SDLcolor(cell.color))
+                    self.hex2color(cell.color))
 
                 try:
                     text.contents
@@ -238,7 +237,7 @@ class Visualizer:
 
         # Set background in window
         sdl2.SDL_SetRenderTarget(self.renderer, None)
-        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255);
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 255)
         sdl2.SDL_RenderClear(self.renderer)
 
         # Copy the stage
@@ -284,7 +283,7 @@ class Visualizer:
         self.window.show()
         self.renderer = sdl2.SDL_CreateRenderer(
             self.window.window,
-            -1, 
+            -1,
             self.renderer_flags)
 
         display = sdl2.SDL_DisplayMode()
@@ -316,7 +315,6 @@ class Visualizer:
         sdlttf.TTF_Init()
         self.get_screen_size()
 
-        self.font = {}
         for i in range(5, 10):
             size = 2**i
             self.font[size] = sdlttf.TTF_OpenFont(
@@ -407,7 +405,7 @@ class Visualizer:
                           event.button.button == sdl2.SDL_BUTTON_LEFT):
                         logger.debug("Mouse button pressed.")
                         asyncio.async(self.client.spawn())
-                        
+
             self.now = time.monotonic()
 
             if self.move is not None:

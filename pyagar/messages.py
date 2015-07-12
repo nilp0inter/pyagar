@@ -1,17 +1,24 @@
+"""
+``pyagar.messages``
+===================
+
+Protocol implementation.
+
+"""
+# pylint: disable=I0011,C0103
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from enum import Enum
-from itertools import count
 import struct
 
-UINT8   = "B"
-INT8    = "b"
-UINT16  = "H"
-INT16   = "h"
-UINT32  = "I"
-INT32   = "i"
-UINT64  = "Q"
-INT64   = "q"
+INT8 = "b"
+INT16 = "h"
+INT32 = "i"
+INT64 = "q"
+UINT8 = "B"
+UINT16 = "H"
+UINT32 = "I"
+UINT64 = "Q"
 FLOAT32 = "f"
 FLOAT64 = "d"
 
@@ -26,12 +33,19 @@ PlayerID = namedtuple("PlayerID", ["id"])
 
 
 class BaseMSG(metaclass=ABCMeta):
+    """
+    All messages inherits from this class.
+
+    Contains utility methods for unpack the data.
+
+    """
     def __init__(self, buf, offset=0):
         self.buf = buf
         self.offset = offset
         self.parse()
 
     def get(self, ctype):
+        """Unpack the given ``ctype`` and update the offset."""
         s = struct.unpack_from(ctype, self.buf, offset=self.offset)
         self.offset += struct.calcsize(ctype)
         if len(s) == 1:
@@ -40,38 +54,50 @@ class BaseMSG(metaclass=ABCMeta):
             return list(s)
 
     def getUint8(self):
+        """Unpack an ``UINT8``."""
         return self.get(UINT8)
 
     def getInt8(self):
+        """Unpack an ``INT8``."""
         return self.get(INT8)
 
     def getUint16(self):
+        """Unpack an ``UINT16``."""
         return self.get(UINT16)
 
     def getInt16(self):
+        """Unpack an ``INT16``."""
         return self.get(INT16)
 
     def getUint32(self):
+        """Unpack an ``UINT32``."""
         return self.get(UINT32)
 
     def getInt32(self):
+        """Unpack an ``INT32``."""
         return self.get(INT32)
 
     def getFloat32(self):
+        """Unpack an ``FLOAT32``."""
         return self.get(FLOAT32)
 
     def getUint64(self):
+        """Unpack an ``UINT64``."""
         return self.get(UINT64)
 
     def getInt64(self):
+        """Unpack an ``INT64``."""
         return self.get(INT64)
 
     def getFloat64(self):
+        """Unpack an ``FLOAT64``."""
         return self.get(FLOAT64)
 
-    def string(self, ctype=UINT16): 
+    def string(self, ctype=UINT16):
+        """Unpack a string."""
         bls = struct.calcsize(ctype)
         def _get():
+            """Generate the secuence of characters to the Null."""
             while True:
                 d = struct.unpack_from(ctype, self.buf, offset=self.offset)[0]
                 self.offset += bls
@@ -84,24 +110,29 @@ class BaseMSG(metaclass=ABCMeta):
 
     @abstractmethod
     def parse(self):
+        """This method must be implemented in the message subclass."""
         pass
 
 
 class Status(BaseMSG):
+    """
+    The status of the stage.
+
+    Who eats who, what is visible, what dissapears...
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.cells = []
         self.eat = []
 
         self.num = self.getUint16()
-        for i in range(self.num):
+        for _ in range(self.num):
             self.eat.append(Eat(eater=self.getUint32(),
                                 eatee=self.getUint32()))
 
-        for i in count():
-            _id = self.getUint32()
-            if _id == 0:
-                break
-
+        _id = self.getUint32()
+        while _id != 0:
             x = self.getInt16()
             y = self.getInt16()
             size = self.getInt16()
@@ -111,9 +142,9 @@ class Status(BaseMSG):
                               self.getUint8() << 8  |
                               self.getUint8())
 
-            k = self.getUint8() 
+            k = self.getUint8()
             is_virus = bool(k & 1)
-            r = (k & 16)
+            # r = (k & 16)
 
             if k & 2:
                 self.offset += 4
@@ -125,9 +156,11 @@ class Status(BaseMSG):
             name = self.string() or None
             self.cells.append(Cell(_id, x, y, size, color, is_virus, name))
 
+            _id = self.getUint32()
+
         self.balls_on_screen = self.getUint32()
         self.dissapears = []
-        for i in range(self.balls_on_screen):
+        for _ in range(self.balls_on_screen):
             self.dissapears.append(Dissapear(self.getUint32()))
 
     def __repr__(self):
@@ -136,9 +169,18 @@ class Status(BaseMSG):
 
 
 class Leaderboard(BaseMSG):
+    """
+    The ``Leaderboard``.
+
+    The top bigger cells in descending order.
+
+    This message is only received in ``FFA`` and ``Experimental`` mode.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.players = []
-        for i in range(self.getUint32()):
+        for _ in range(self.getUint32()):
             self.players.append(Player(id=self.getUint32(),
                                        name=self.string()))
 
@@ -147,16 +189,32 @@ class Leaderboard(BaseMSG):
 
 
 class TeamsScore(BaseMSG):
+    """
+    The ``TeamScore``.
+
+    The percent of mass of each team.
+
+    This message is only received in the ``Team`` mode.
+
+    """
     def parse(self):
-        self.numplayers = self.getUint32()
-        self.players = [self.getFloat32() for i in range(self.numplayers)]
+        """Unpacks the data."""
+        self.numteams = self.getUint32()
+        self.players = [self.getFloat32() for i in range(self.numteams)]
 
     def __repr__(self):
         return repr(self.players)
 
 
 class ScreenAndCamera(BaseMSG):
+    """
+    Screen and Camera position, all in one.
+
+    This message is the first message in the stream.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.screen = Screen(x1=self.getFloat64(),
                              y1=self.getFloat64(),
                              x2=self.getFloat64(),
@@ -166,12 +224,19 @@ class ScreenAndCamera(BaseMSG):
                              y=(self.screen.y2 + self.screen.y1) / 2,
                              zoom=1)
 
-    def __repr__(self): 
+    def __repr__(self):
         return "%s %s" % (self.screen, self.camera)
 
 
 class CameraPosition(BaseMSG):
+    """
+    Change in the camera position and/or the zoom.
+
+    Only received in ``Spectate`` mode.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.camera = Camera(x=self.getFloat32(),
                              y=self.getFloat32(),
                              zoom=self.getFloat32())
@@ -181,7 +246,12 @@ class CameraPosition(BaseMSG):
 
 
 class PlayerCell(BaseMSG):
+    """
+    ID of the player.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.cell = PlayerID(self.getUint32())
 
     def __repr__(self):
@@ -189,18 +259,33 @@ class PlayerCell(BaseMSG):
 
 
 class ResetSomething(BaseMSG):
+    """
+    This message is present in the code but never seen.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         pass
 
 
 class SetQARA(BaseMSG):
+    """
+    This message is present in the code but never seen.
+
+    """
     def parse(self):
+        """Unpacks the data."""
         self.ca = self.getInt16()
         self.da = self.getInt16()
         self.sa = True
 
 
 class MSGType(Enum):
+    """
+    This enum contains the identifier of each message along with the
+    name of the class which parses it.
+
+    """
     Status = 16
     CameraPosition = 17
     ResetSomething = 20
@@ -212,11 +297,20 @@ class MSGType(Enum):
 
     @property
     def cls(self):
+        """Returns the parser class of this enum."""
         return globals().get(self.name)
 
 
 class MSG(BaseMSG):
+    """
+    All messages.
+
+    This class identify the specific message type and calls the proper
+    parser.
+
+    """
     def parse(self):
+        """Unpacks the message identifier and instantiate the parser."""
         c = self.get("B")
         if c == 240:
             self.offset += 5
