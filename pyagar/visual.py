@@ -83,13 +83,34 @@ class Visualizer:
 
             return int(x + x_offset), int(y + y_offset)
 
+    @staticmethod
+    def remap(o_val, o_min, o_max, n_min, n_max):
+        """Map a value from one range to another."""
+        o_range = (o_max - o_min)  
+        n_range = (n_max - n_min)  
+        n_value = (((o_val - o_min) * n_range) / o_range) + n_min
+        return n_value
+
     def mouse_to_stage_coords(self, x, y):
         cell = self.players.get(self.player_id)
         if cell is None:
             return None
         else:
-            m_x = cell.x + (x - self.s_width / 2)
-            m_y = cell.y + (y - self.s_height / 2)
+            camera = self.camera_rect
+            # Camera rect
+            c_x1 = camera.x
+            c_x2 = camera.x + camera.w
+            c_y1 = camera.y
+            c_y2 = camera.y + camera.h
+
+            # Screen rect
+            s_x1 = 0
+            s_x2 = self.s_width
+            s_y1 = 0
+            s_y2 = self.s_height
+
+            m_x = int(self.remap(x, s_x1, s_x2, c_x1, c_x2) - self.width / 2)
+            m_y = int(self.remap(y, s_y1, s_y2, c_y1, c_y2) - self.height / 2)
 
             return m_x, m_y
 
