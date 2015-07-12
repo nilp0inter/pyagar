@@ -59,15 +59,32 @@ class Client:
     back any command requested by the player.
 
     """
-    def __init__(self, nick, location='EU-London'):
+    def __init__(self, nick, region='EU-London', party=False):
         self.nick = nick
-        self.location = location
+        self.region = region
         self.server = None
         self.token = None
+        self.party = party
+        if self.party is True:
+            self.create_party()
         self.ws = None
         self.connected = asyncio.Event()
         self.messages = asyncio.Queue()
 
+    def create_party(self):
+        """Create a new party."""
+        logger.info("Creating a new party.")
+        region = b":".join((self.region.encode('ascii'), b"party"))
+        data = b"\n".join((region, INIT_TOKEN.encode('ascii')))
+        res = requests.post('https://m.agar.io/',
+                            data=data,
+                            headers={'Origin': 'http://agar.io',
+                                     'User-Agent': USER_AGENT,
+                                     'Referer': 'http://agar.io/'})
+
+        self.server, self.token, _ = res.text.split('\n')
+        logger.debug("Server: %s", self.server)
+        logger.info("Party Token: %s", self.token)
 
     @classmethod
     def get_regions(cls):
@@ -77,15 +94,25 @@ class Client:
 
     def get_server(self):
         """Requests a new server and token."""
-        data = b"\n".join((self.location.encode('ascii'),
-                           INIT_TOKEN.encode('ascii')))
-        res = requests.post('http://m.agar.io/',
+        if not self.party:
+            url = 'https://m.agar.io/'
+            data = b"\n".join((self.region.encode('ascii'),
+                               INIT_TOKEN.encode('ascii')))
+        else:
+            url = 'https://m.agar.io/getToken'
+            data = self.party.encode("ascii")
+
+        res = requests.post(url,
                             data=data,
                             headers={'Origin': 'http://agar.io',
                                      'User-Agent': USER_AGENT,
                                      'Referer': 'http://agar.io/'})
 
-        self.server, self.token, _ = res.text.split('\n')
+        if not self.party:
+            self.server, self.token, _ = res.text.split('\n')
+        else:
+            self.server = res.text.strip('\n')
+            self.token = self.party
         logger.debug("Server: %s", self.server)
         logger.debug("Token: %s", self.token)
 

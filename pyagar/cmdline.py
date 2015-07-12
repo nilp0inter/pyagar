@@ -47,6 +47,10 @@ def pyagar_parser():
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + VERSION)
 
+    party = parser.add_mutually_exclusive_group(required=False)
+    party.add_argument('--create-party', action='store_true')
+    party.add_argument('--join-party', action='store')
+
     # Subcommands
     subparsers = parser.add_subparsers(dest="command")
 
@@ -78,18 +82,8 @@ def pyagar():
         logger.error("No subcommand present. To play execute: 'pyagar play'")
         sys.exit(1)
 
-    client = Client(args.nick)
-
-    coros = [client.read()]
-
+    coros = []
     dsts = []
-
-    visualizer = Visualizer(
-        client,
-        view_only=args.command != "play",
-        hardware=not args.disable_hw)
-    coros.append(visualizer.run())
-    dsts.append(visualizer)
 
     if args.debug is not None:
         logger.setLevel(logging.DEBUG)
@@ -102,6 +96,20 @@ def pyagar():
     else:
         logger.setLevel(logging.INFO)
 
+    logger.info("Starting pyagar!")
+    if VERSION:
+        logger.info("Version %s", VERSION)
+
+    party = args.create_party or args.join_party or False
+    client = Client(args.nick, region=args.region, party=party)
+    coros.append(client.read())
+
+    visualizer = Visualizer(
+        client,
+        view_only=args.command != "play",
+        hardware=not args.disable_hw)
+    coros.append(visualizer.run())
+    dsts.append(visualizer)
 
     if args.command == "list-regions":
         from pyagar.utils import print_regions
@@ -148,10 +156,6 @@ def pyagar():
                 dsts.append(controller)
 
     coros.append(hub(client, *dsts))
-
-    logger.info("Starting pyagar!")
-    if VERSION:
-        logger.info("Version %s", VERSION)
 
     LOOP.run_until_complete(client.connect())
 

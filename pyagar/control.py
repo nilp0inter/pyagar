@@ -129,8 +129,8 @@ class Greedy(Controller):
         o = self.edible
         p = self.player
         if o and p:
-            food = max(o, key=lambda c: (-1*(abs(p.x-c.x)+abs(p.x-c.x)), 0))
-            return Movement(food.x, food.y)
+            closer = min(o, key=lambda c: abs(c.x-p.x)+abs(c.y-p.y))
+            return Movement(closer.x, closer.y)
         else:
             return None
 
@@ -147,14 +147,17 @@ class Escape(Controller):
         return Movement(player.x - ox,
                         player.y - oy)
 
-    def compound_escape_vector(self, vectors):
+    def compound_escape_vector(self, vectors, cells):
         """Returns the sum of all ``vectors``."""
         p = self.player
+
         xs = [c.x - p.x for c in vectors]
         ys = [c.y - p.y for c in vectors]
 
-        x = sum(xs)
-        y = sum(ys)
+        vs = [(x, y, c.size) for x, y, c in zip(xs, ys, cells)]
+
+        x = sum(s / 2 * x for x, _, s in vs if x != 0) * 300
+        y = sum(s / 2 * y for _, y, s in vs if y != 0) * 300
 
         return Movement(x=p.x + x,
                         y=p.y + y)
@@ -165,7 +168,7 @@ class Escape(Controller):
 
         if p and o:
             vectors = [self.escape_vector(p, c) for c in o]
-            return self.compound_escape_vector(vectors)
+            return self.compound_escape_vector(vectors, o)
         elif p:
             return Movement(x=p.x, y=p.y)
 
