@@ -33,3 +33,11 @@ class Output:
             data = yield from self.messages.get()
             logger.debug(data)
 
+
+def print_regions(regions):
+    """Prints a pretty table with the region data."""
+    from tabulate import tabulate
+    headers = ["Region", "numServers", "numRealms", "numPlayers"]
+    table = [[k, v["numServers"], v["numRealms"], v["numPlayers"]]
+             for k, v in sorted(regions.items())]
+    print(tabulate(table, headers, tablefmt="rst"))

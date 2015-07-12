@@ -68,6 +68,13 @@ class Client:
         self.connected = asyncio.Event()
         self.messages = asyncio.Queue()
 
+
+    @classmethod
+    def get_regions(cls):
+        """Request the list of regions."""
+        res = requests.get('https://m.agar.io/info')
+        return res.json().get('regions', {})
+
     def get_server(self):
         """Requests a new server and token."""
         data = b"\n".join((self.location.encode('ascii'),

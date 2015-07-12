@@ -39,12 +39,19 @@ def pyagar_parser():
         dest="debug",
         help=("Enable debug mode. "
               "Use multiple times to increase the debug level."))
+    parser.add_argument(
+        "-r",
+        "--region",
+        default="EU-London")
 
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + VERSION)
 
     # Subcommands
     subparsers = parser.add_subparsers(dest="command")
+
+    # List regions subcommand
+    subparsers.add_parser("list-regions")
 
     # Play subcommand
     subparsers.add_parser("play")
@@ -95,7 +102,12 @@ def pyagar():
     else:
         logger.setLevel(logging.INFO)
 
-    if args.command == "bot":
+
+    if args.command == "list-regions":
+        from pyagar.utils import print_regions
+        print_regions(client.get_regions())
+        sys.exit(0)
+    elif args.command == "bot":
         if args.list_types:
             print("Available bot types:\n")
             from pyagar.control import Controller
