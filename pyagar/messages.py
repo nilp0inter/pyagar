@@ -133,8 +133,8 @@ class Status(BaseMSG):
 
         _id = self.getUint32()
         while _id != 0:
-            x = self.getInt16()
-            y = self.getInt16()
+            x = self.getInt32()
+            y = self.getInt32()
             size = self.getInt16()
 
             # Get Cell Color
