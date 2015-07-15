@@ -1,13 +1,28 @@
 .. include:: ../../README.rst
 
-Contents:
+
+User documentation
+------------------
 
 .. toctree::
-   :maxdepth: 2
 
    install
    cmd
+   controls
 
+
+Developer documentation
+-----------------------
+
+.. toctree::
+
+   pycode
+
+Other Implementations
+---------------------
+
+- https://github.com/Gjum/pyAgar.io
+- https://github.com/Raeon/pygar
 
 Indices and tables
 ==================

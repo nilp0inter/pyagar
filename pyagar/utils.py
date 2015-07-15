@@ -1,5 +1,6 @@
 """
 ``pyagar.utils``
+================
 
 Non categorized stuff.
 
