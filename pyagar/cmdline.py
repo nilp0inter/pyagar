@@ -27,59 +27,90 @@ def pyagar_parser():
     parser.add_argument(
         "--disable-hw",
         action="store_true",
-        help="Disable hardware acceleration.")
+        help="disable hardware acceleration")
     parser.add_argument(
         "-n",
         "--nick",
+        help="player cell's nickname",
         default=NICK)
     parser.add_argument(
         "-d",
         "--debug",
         action="count",
         dest="debug",
-        help=("Enable debug mode. "
-              "Use multiple times to increase the debug level."))
+        help=("enable debug mode; "
+              "use multiple times to increase the debug level"))
     parser.add_argument(
         "-r",
         "--region",
+        help="the region you want to connect to",
         default="EU-London")
 
     parser.add_argument(
         "-s",
         "--save",
-        help=("Save the gameplay in a file. "
-              "You can replay it later using the ``replay`` command."))
+        help=("save the gameplay in a file; "
+              "you can replay it later using the ``replay`` command"))
 
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + VERSION)
 
     party = parser.add_mutually_exclusive_group(required=False)
-    party.add_argument('--create-party', action='store_true')
-    party.add_argument('--join-party', action='store')
+    party.add_argument(
+        '--create-party',
+        help="create a new party and print the shared token",
+        action='store_true')
+    party.add_argument(
+        '--join-party',
+        help="join an already created party",
+        action='store')
 
     # Subcommands
     subparsers = parser.add_subparsers(dest="command")
 
     # List regions subcommand
-    subparsers.add_parser("list-regions")
+    subparsers.add_parser(
+        "list-regions",
+        help="print a table with the list of available regions")
 
     # Play subcommand
-    subparsers.add_parser("play")
+    subparsers.add_parser(
+        "play",
+        help="start a new game")
 
     # Spectate subcommand
-    subparsers.add_parser("spectate")
+    subparsers.add_parser(
+        "spectate",
+        help="connect to the server in spectator mode")
 
     # Bot subcommand
-    bot = subparsers.add_parser("bot")
+    bot = subparsers.add_parser(
+        "bot",
+        help=("like ``play`` mode but the cell is controlled by a "
+              "``Controller`` class"))
 
     group = bot.add_mutually_exclusive_group(required=True)
-    group.add_argument('--list-types', action='store_true')
-    group.add_argument('--type', action='store')
-    group.add_argument('--from-file', action='store')
+    group.add_argument(
+        '--list-types',
+        action='store_true',
+        help="print a table with the available ``Controllers``")
+    group.add_argument(
+        '--type',
+        action='store',
+        help="type of controller to use")
+    group.add_argument(
+        '--from-file',
+        action='store',
+        help="use a controller from a python file")
 
     # Replay subcommand
-    replay = subparsers.add_parser("replay")
-    replay.add_argument('gameplay_file', nargs=1)
+    replay = subparsers.add_parser(
+        "replay",
+        help="play back a recorded gameplay")
+    replay.add_argument(
+        'gameplay_file',
+        nargs=1,
+        help="full path to the record file")
 
     return parser
 
