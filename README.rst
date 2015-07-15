@@ -6,11 +6,9 @@ pyagar
 This package allows you to play the game, see the gameplay as an spectator,
 record and replay games and also develop your own bot.
 
-.. image:: https://raw.githubusercontent.com/nilp0inter/pyagar/develop/docs/images/shot.png
-   :alt: Screenshot
-   :align: center
-   :width: 640
 
-Please, _`checkout the documentation` for further instructions.
+Please, `checkout the documentation`_ for further instructions.
 
 Enjoy!
+
+.. _`checkout the documentation`: http://pyagar.readthedocs.org
