@@ -1,7 +1,10 @@
 pyagar
 ======
 
-``pyagar`` is a python client for the popular online game **agar.io**.
+``pyagar`` is a python client for the popular online game at http://agar.io.
+
+This software is not the official client and is not associated in any manner with
+the original website.
 
 This package allows you to play the game, see the gameplay as an spectator
 and also play automatically with the **auto** feature.
