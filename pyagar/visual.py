@@ -225,8 +225,6 @@ class Visualizer:
         else:
             self.stage_h = self.gamescreen_h
 
-        self.stage_w = self.stage_h = 8192
-
         if self.stage is not None:
             sdl2.SDL_DestroyTexture(self.stage)
         self.stage = sdl2.SDL_CreateTexture(
