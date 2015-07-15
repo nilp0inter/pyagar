@@ -62,9 +62,6 @@ class Visualizer:
     SDL based visualizer.
 
     """
-
-    factory = sdl2.ext.SpriteFactory(sdl2.ext.SOFTWARE)
-
     def __init__(self, client, view_only=False, hardware=True):
         self.names = dict()
         self.messages = asyncio.Queue()
