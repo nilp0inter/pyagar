@@ -93,6 +93,8 @@ class Visualizer:
 
         #: The game board information sent by the server.
         self._gamescreen = None
+        self.gamescreen_w = None
+        self.gamescreen_h = None
 
         #: The texture we draw to.
         self.stage = None
@@ -181,14 +183,25 @@ class Visualizer:
             c_y1 = camera.y
             c_y2 = camera.y + camera.h
 
-            # Screen rect
-            s_x1 = 0
-            s_x2 = self.window_w
-            s_y1 = 0
-            s_y2 = self.window_h
+            # Window rect
+            w_x1 = 0
+            w_x2 = self.window_w
+            w_y1 = 0
+            w_y2 = self.window_h
 
-            m_x = int(self.remap(x, s_x1, s_x2, c_x1, c_x2) - self.stage_w / 2)
-            m_y = int(self.remap(y, s_y1, s_y2, c_y1, c_y2) - self.stage_h / 2)
+            on_camera_x = self.remap(x, w_x1, w_x2, c_x1, c_x2)
+            on_camera_y = self.remap(y, w_y1, w_y2, c_y1, c_y2)
+
+            m_x = int(self.remap(on_camera_x,
+                                 0,
+                                 self.stage_w,
+                                 self.gamescreen.x1,
+                                 self.gamescreen.x2))
+            m_y = int(self.remap(on_camera_y,
+                                 0,
+                                 self.stage_h,
+                                 self.gamescreen.y1,
+                                 self.gamescreen.y2))
 
             return m_x, m_y
 
@@ -200,17 +213,19 @@ class Visualizer:
     def gamescreen(self, value):
         self._gamescreen = value
 
-        game_w = int(value.x2 - value.x1)
-        if game_w > self.renderer_info.max_texture_width:
+        self.gamescreen_w = int(value.x2 - value.x1)
+        if self.gamescreen_w > self.renderer_info.max_texture_width:
             self.stage_w = self.renderer_info.max_texture_width
         else:
-            self.stage_w = game_w
+            self.stage_w = self.gamescreen_w
 
-        game_h = int(value.y2 - value.y1)
-        if game_h > self.renderer_info.max_texture_height:
+        self.gamescreen_h = int(value.y2 - value.y1)
+        if self.gamescreen_h > self.renderer_info.max_texture_height:
             self.stage_h = self.renderer_info.max_texture_height
         else:
-            self.stage_h = game_h
+            self.stage_h = self.gamescreen_h
+
+        self.stage_w = self.stage_h = 8192
 
         if self.stage is not None:
             sdl2.SDL_DestroyTexture(self.stage)
@@ -339,11 +354,6 @@ class Visualizer:
                                      fill_color)
             if label:
                 try:
-                    #                    text = asrt(sdlttf.TTF_RenderUTF8_Solid(
-                    #                        self.get_font(size),
-                    #                        label.encode('utf-8', errors='ignore'),
-                    #                        sdl2.SDL_Color(255, 255, 255, 255),
-                    #                        self.hex2color(cell.color)))
                     text = asrt(sdlttf.TTF_RenderUTF8_Blended(
                         self.get_font(size),
                         label.encode('utf-8', errors='ignore'),
