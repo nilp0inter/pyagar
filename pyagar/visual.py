@@ -10,20 +10,21 @@ import os
 import math
 import asyncio
 import time
+import warnings
 
-from sdl2 import sdlgfx
-from sdl2 import sdlttf
-import sdl2
-import sdl2.ext
+try:
+    from sdl2 import sdlgfx
+    from sdl2 import sdlttf
+    import sdl2
+    import sdl2.ext
+except ImportError:
+    warnings.warn("Can't import pysdl2. The visualizer is not available.")
 
 from pyagar.log import logger
 from pyagar.messages import Camera
 from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
 
 FRAME_RATE = 60
-
-BLACK = sdl2.ext.Color(0, 0, 0)
-WHITE = sdl2.ext.Color(255, 255, 255)
 
 HERE = os.path.realpath(os.path.dirname(__file__))
 
