@@ -6,9 +6,10 @@ Provides the default visualizer.
 
 """
 # pylint: disable=C0103
-import os
-import math
 import asyncio
+import ctypes
+import math
+import os
 import time
 import warnings
 
@@ -22,7 +23,11 @@ except ImportError:
 
 from pyagar.log import logger
 from pyagar.messages import Camera
-from pyagar.messages import Status, ScreenAndCamera, CameraPosition, PlayerCell
+from pyagar.messages import Status
+from pyagar.messages import ScreenAndCamera
+from pyagar.messages import CameraPosition
+from pyagar.messages import PlayerCell
+from pyagar.messages import Leaderboard
 
 FRAME_RATE = 60
 
@@ -108,6 +113,77 @@ class Visualizer:
         self.font = {}
 
         self.renderer_info = sdl2.SDL_RendererInfo()
+
+        self.leaderboard = None
+
+    def update_leaderboard(self, data):
+        lines = []
+
+        max_width = ctypes.c_int(0)
+        total_height = 0
+
+        def write_line(msg, size):
+            nonlocal max_width
+            nonlocal total_height
+            surface = asrt(sdlttf.TTF_RenderUTF8_Blended(
+                self.font[size],
+                msg.encode('utf-8'),
+                sdl2.SDL_Color(255, 255, 255, 255)))
+
+            texture = asrt(sdl2.SDL_CreateTextureFromSurface(
+                self.renderer,
+                surface))
+
+            sdl2.SDL_FreeSurface(surface)
+            lines.append(texture)
+
+            # Update max_width.
+            width = ctypes.c_int(0)
+            height = ctypes.c_int(0)
+            sdlttf.TTF_SizeUTF8(
+                self.font[size],
+                msg.encode('utf-8'),
+                width,
+                height)
+            max_width = max(max_width, width, key=lambda c: c.value)
+            total_height += height.value
+
+        write_line("Leaderboard", 64)
+        for idx, cell in enumerate(data.players):
+            write_line(str(idx) + '. ' + cell.name, 32)
+
+        if self.leaderboard is not None:
+            sdl2.SDL_DestroyTexture(self.leaderboard)
+
+        self.leaderboard = sdl2.SDL_CreateTexture(
+            self.renderer,
+            self.pixel_format,
+            sdl2.SDL_TEXTUREACCESS_TARGET,
+            max_width.value,
+            total_height)
+
+        sdl2.SDL_SetRenderTarget(self.renderer,
+                                 self.leaderboard)
+        sdl2.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 128)
+        sdl2.SDL_RenderClear(self.renderer)
+
+        # Copy all strings to the leaderboard's texture.
+        h = ctypes.c_int(0)
+        w = ctypes.c_int(0)
+        offset_height = 0
+        for line in lines:
+            asrt(sdl2.SDL_QueryTexture(line, None, None, w, h))
+            asrt(sdl2.SDL_RenderCopy(
+                    self.renderer,
+                    line,
+                    None,
+                    sdl2.SDL_Rect(0, offset_height, w.value, h.value)))
+            offset_height += h.value
+            sdl2.SDL_DestroyTexture(line)
+
+        sdl2.SDL_SetTextureBlendMode(
+            self.leaderboard,
+            sdl2.SDL_BLENDMODE_BLEND)
 
     def get_capabilities(self):
         asrt(sdl2.SDL_GetRendererInfo(self.renderer, self.renderer_info))
@@ -385,6 +461,17 @@ class Visualizer:
                             camera,
                             sdl2.SDL_Rect(0, 0, self.window_w, self.window_h))
 
+        if self.leaderboard is not None:
+            sdl2.SDL_RenderCopy(
+                self.renderer,
+                self.leaderboard,
+                None,
+                sdl2.SDL_Rect(
+                    int(self.window_w * 5 / 6),
+                    0,
+                    int(self.window_w / 6),
+                    int(self.window_h * 2 / 3)))
+
         # Refresh
         sdl2.SDL_RenderPresent(self.renderer)
 
@@ -485,6 +572,8 @@ class Visualizer:
                 self.player_id = data.cell.id
             elif isinstance(data, CameraPosition):
                 self.camera = data.camera
+            elif isinstance(data, Leaderboard):
+                self.update_leaderboard(data)
             elif isinstance(data, Status):
                 for cell in data.cells:
                     self.players[cell.id] = cell
