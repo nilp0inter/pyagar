@@ -5,7 +5,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(HERE, 'README.rst')).read()
 CHANGELOG = open(os.path.join(HERE, 'CHANGELOG.rst')).read()
 
-VERSION = '0.0.7'
+VERSION = '0.0.8'
 
 setup(name='pyagar',
       version=VERSION,
@@ -27,7 +27,8 @@ setup(name='pyagar',
       install_requires=[
           'PySDL2==0.9.3',
           'requests==2.7.0',
-          'websockets==2.4'
+          'websockets==2.4',
+          'tabulate==0.7.5'
       ],
       entry_points={
           'console_scripts':

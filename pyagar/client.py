@@ -1,4 +1,11 @@
-import sys
+"""
+``pyagar.client``
+=================
+
+This module contains the Client class.
+
+"""
+# pylint: disable=I0011,C0103
 import base64
 import random
 import struct
@@ -10,6 +17,7 @@ from pyagar.log import logger
 
 
 INIT_TOKEN = '154669603'
+PROTO_VERSION = 5
 USER_AGENT = (
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/43.0.2357.125 Safari/537.36')
@@ -45,19 +53,31 @@ import websockets
 
 
 class Client:
-    def __init__(self, nick, location='EU-London'):
+    """
+    The client.
+
+    Manages the connection, receives the data from the server and sends
+    back any command requested by the player.
+
+    """
+    def __init__(self, nick, region='EU-London', party=False):
         self.nick = nick
-        self.location = location
+        self.region = region
         self.server = None
         self.token = None
+        self.party = party
+        if self.party is True:
+            self.create_party()
         self.ws = None
         self.connected = asyncio.Event()
         self.messages = asyncio.Queue()
 
-    def get_server(self):
-        data = b"\n".join((self.location.encode('ascii'),
-                           INIT_TOKEN.encode('ascii')))
-        res = requests.post('http://m.agar.io/',
+    def create_party(self):
+        """Create a new party."""
+        logger.info("Creating a new party.")
+        region = b":".join((self.region.encode('ascii'), b"party"))
+        data = b"\n".join((region, INIT_TOKEN.encode('ascii')))
+        res = requests.post('https://m.agar.io/',
                             data=data,
                             headers={'Origin': 'http://agar.io',
                                      'User-Agent': USER_AGENT,
@@ -65,17 +85,48 @@ class Client:
 
         self.server, self.token, _ = res.text.split('\n')
         logger.debug("Server: %s", self.server)
+        logger.info("Party Token: %s", self.token)
+
+    @classmethod
+    def get_regions(cls):
+        """Request the list of regions."""
+        res = requests.get('https://m.agar.io/info')
+        return res.json().get('regions', {})
+
+    def get_server(self):
+        """Requests a new server and token."""
+        if not self.party:
+            url = 'https://m.agar.io/'
+            data = b"\n".join((self.region.encode('ascii'),
+                               INIT_TOKEN.encode('ascii')))
+        else:
+            url = 'https://m.agar.io/getToken'
+            data = self.party.encode("ascii")
+
+        res = requests.post(url,
+                            data=data,
+                            headers={'Origin': 'http://agar.io',
+                                     'User-Agent': USER_AGENT,
+                                     'Referer': 'http://agar.io/'})
+
+        if not self.party:
+            self.server, self.token, _ = res.text.split('\n')
+        else:
+            self.server = res.text.strip('\n')
+            self.token = self.party
+        logger.debug("Server: %s", self.server)
         logger.debug("Token: %s", self.token)
 
     @asyncio.coroutine
     def connect(self):
+        """Connects to the server."""
         if self.server is None:
             self.get_server()
 
         logger.info("Connecting to server %s", self.server)
         self.ws = yield from websockets.connect("ws://" + self.server,
                                                 origin='http://agar.io')
-        yield from self.ws.send(struct.pack("<BI", 254, 4))
+        yield from self.ws.send(struct.pack("<BI", 254, PROTO_VERSION))
         yield from self.ws.send(struct.pack("<BI", 255, int(INIT_TOKEN)))
 
         # Send token
@@ -88,6 +139,7 @@ class Client:
 
     @asyncio.coroutine
     def spawn(self):
+        """Sends the ``spawn`` command."""
         yield from self.connected.wait()
         rawnick = self.nick.encode('utf-8')
         msg = struct.pack("<B" + ("H" * len(rawnick)),
@@ -97,6 +149,7 @@ class Client:
 
     @asyncio.coroutine
     def split(self):
+        """Sends the ``split cell`` command."""
         yield from self.connected.wait()
         msg = struct.pack("<B", 17)
         yield from self.ws.send(msg)
@@ -104,6 +157,7 @@ class Client:
 
     @asyncio.coroutine
     def eject(self):
+        """Sends the ``mass eject`` command."""
         yield from self.connected.wait()
         msg = struct.pack("<B", 21)
         yield from self.ws.send(msg)
@@ -111,6 +165,7 @@ class Client:
 
     @asyncio.coroutine
     def read(self):
+        """Read, decode and queue data packets from the server."""
         while True:
             yield from self.connected.wait()
             data = yield from self.ws.recv()
@@ -127,12 +182,14 @@ class Client:
 
     @asyncio.coroutine
     def move(self, x, y):
+        """Sends the ``movement`` command."""
         yield from self.connected.wait()
         yield from self.ws.send(struct.pack("<BddI", 16, x, y, 0))
         logger.debug("Move sent (x=%s, y=%s)", x, y)
 
     @asyncio.coroutine
     def spectate(self):
+        """Initiates the spectator mode."""
         yield from self.connected.wait()
         yield from asyncio.sleep(2)
         yield from self.ws.send(struct.pack("B", 1))

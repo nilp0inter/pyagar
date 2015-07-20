@@ -1,110 +1,18 @@
 pyagar
 ======
 
-``pyagar`` is a python client for the popular online game **agar.io**.
+``pyagar`` is a python client for the popular online game at http://agar.io.
 
-This package allows you to play the game, see the gameplay as an spectator
-and also play automatically with the **auto** feature.
+.. warning::
 
-.. image:: docs/images/shot.png
-   :alt: Screenshot
-   :align: center
+   This software is not the official client and is not associated in any
+   manner with the original website.
 
+This package allows you to play the game, see the gameplay as an spectator,
+record and replay games and also develop your own bot.
 
-Dependencies
-------------
+Please, `checkout the documentation`_ for further instructions.
 
-In order to run this software you'll need:
+Enjoy!
 
-- Python 3.4+
-- SDL2 (you may found it in your distribution as libsdl2)
-- sdl2_ttf https://www.libsdl.org/projects/SDL_ttf/
-- sdl2_gfx http://cms.ferzkopp.net/index.php/software/13-sdl-gfx
-
-
-Installation
-------------
-
-It is recomended to install this package into a virtualenv.
-
-
-Stable version
-~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   $ pip install pyagar
-
-
-Usage
------
-
-Command
-~~~~~~~
-
-This package creates the command ``pyagar``.
-
-.. code-block:: bash
-
-   $ pyagar --help
-   usage: pyagar [-h] [--no-visualize] [-n NICK] [--auto] [--debug] [--spectate]
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      --no-visualize
-      -n NICK, --nick NICK
-      --auto
-      --debug
-      --spectate
-
-
-Controls
-~~~~~~~~
-
-=========== ============================================
-Action      Control
-=========== ============================================
-Move        Mouse (Relative to the center of the window)
-Start       Mouse (Left button)
-Eject       ``W`` key
-Split       ``Space`` key
-Fullscreen  ``F`` key
-Zoom        Mouse wheel
-Exit        ``ESC`` key
-=========== ============================================
-
-
-Play examples
--------------
-
-Just play
-~~~~~~~~~
-
-.. code-block:: bash
-
-   $ pyagar play
-
-Press the left mouse button to start.
-
-
-Just watch the game
-~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   $ pyagar spectate
-
-
-Play automatically using a bot
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   $ pyagar bot --type=EatWhenNoPredators
-
-
-Other implementations
----------------------
-
-- https://github.com/Gjum/pyAgar.io
-- https://github.com/Raeon/pygar
+.. _`checkout the documentation`: http://pyagar.readthedocs.org
