@@ -28,3 +28,10 @@ Ubuntu 15.04
 .. _libsdl2: https://www.libsdl.org/
 .. _libsdl2-gfx: http://cms.ferzkopp.net/index.php/software/13-sdl-gfx
 .. _libsdl2-ttf: https://www.libsdl.org/projects/SDL_ttf/
+
+
+Windows
+-------
+
+Grab the last Windows installer from
+https://github.com/nilp0inter/pyagar/releases/latest and run it.
