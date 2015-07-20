@@ -18,14 +18,19 @@ Developer documentation
 
    pycode
 
+
+.. include:: ../../CHANGELOG.rst
+
+
 Other Implementations
 ---------------------
 
 - https://github.com/Gjum/pyAgar.io
 - https://github.com/Raeon/pygar
 
+
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
