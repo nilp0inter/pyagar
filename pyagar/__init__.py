@@ -14,4 +14,4 @@ NICK = "pyagar"
 try:
     VERSION = pkg_resources.get_distribution("pyagar").version
 except pkg_resources.DistributionNotFound:
-    VERSION = None
+    VERSION = 'Unknown'

@@ -13,10 +13,6 @@ import sys
 import textwrap
 
 from pyagar import LOOP, NICK, VERSION
-from pyagar.client import Client
-from pyagar.log import logger
-from pyagar.utils import hub, GameplaySaver, GameReplay
-from pyagar.visual import Visualizer
 
 
 def pyagar_parser():
@@ -115,10 +111,14 @@ def pyagar_parser():
     return parser
 
 
-def pyagar():
+def pyagar(argv=None):
     """pyagar cli interface."""
+    from pyagar.client import Client
+    from pyagar.log import logger
+    from pyagar.utils import hub, GameplaySaver, GameReplay
+    from pyagar.visual import Visualizer
 
-    args = pyagar_parser().parse_args()
+    args = pyagar_parser().parse_args(argv)
     if args.command is None:
         logger.error("No subcommand present. To play execute: 'pyagar play'")
         sys.exit(1)
@@ -231,3 +231,17 @@ def pyagar():
             logger.exception("Exception running coroutine.")
 
     logger.info("Bye!")
+
+
+def winlaunch():
+    import os
+    BASE = os.path.join(
+        os.path.realpath(os.path.dirname(__file__)), '..', '..')
+
+    import sys
+    sys.path.insert(0, os.path.join(BASE, 'pkgs'))
+    
+    os.environ['PYSDL2_DLL_PATH'] = os.path.join(BASE, 'lib', 'x86')
+    
+    from pyagar.cmdline import pyagar
+    pyagar(['play'])
