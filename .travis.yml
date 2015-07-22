@@ -1,6 +1,6 @@
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y libsdl2-2.0-0 libsdl2-gfx-1.0-0 libsdl2-ttf-2.0-0
+  - sudo apt-get install -y 'libsdl2-2.*' 'libsdl2-gfx-1.*' 'libsdl2-ttf-2.*'
 language: python
 python: 3.4
 install:
