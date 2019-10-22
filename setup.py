@@ -27,7 +27,7 @@ setup(name='pyagar',
       zip_safe=False,
       install_requires=[
           'PySDL2==0.9.3',
-          'requests==2.7.0',
+          'requests==2.20.0',
           'websockets==2.4',
           'tabulate==0.7.5'
       ],
